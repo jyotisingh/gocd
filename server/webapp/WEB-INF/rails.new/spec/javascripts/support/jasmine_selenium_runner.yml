@@ -1,0 +1,3 @@
+---
+use_sauce: false 
+browser: <%= ENV['JASMINE_BROWSER'] %>
