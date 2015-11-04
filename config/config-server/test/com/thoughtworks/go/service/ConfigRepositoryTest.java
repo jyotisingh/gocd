@@ -35,6 +35,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Properties;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.not;
@@ -364,6 +365,16 @@ public class ConfigRepositoryTest {
         configRepo.getConfigMergedWithLatestRevision(goConfigRevision(changeOnBranch, "md5-3"), oldMd5);
         assertThat(configRepo.git().getRepository().getBranch(), is("master"));
         assertThat(configRepo.git().branchList().call().size(), is(1));
+    }
+
+    @Test
+    public void shouldPerformGC() throws Exception {
+        configRepo.checkin(goConfigRevision("v1", "md5-1"));
+        Long numberOfLooseObjects = (Long) configRepo.git().gc().getStatistics().get("sizeOfLooseObjects");
+        assertThat(numberOfLooseObjects > 0l, is(true));
+        configRepo.garbageCollect();
+        numberOfLooseObjects = (Long) configRepo.git().gc().getStatistics().get("sizeOfLooseObjects");
+        assertThat(numberOfLooseObjects, is(0l));
     }
 
     private GoConfigRevision goConfigRevision(String fileContent, String md5) {

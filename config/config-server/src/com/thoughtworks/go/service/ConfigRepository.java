@@ -27,15 +27,16 @@ import org.apache.log4j.Logger;
 import org.eclipse.jgit.api.*;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.diff.DiffFormatter;
+import org.eclipse.jgit.internal.storage.file.FileRepository;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectLoader;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevTree;
-import org.eclipse.jgit.storage.file.FileRepository;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
@@ -63,7 +64,7 @@ public class ConfigRepository {
     private Repository gitRepo;
 
     @Autowired
-    public ConfigRepository(SystemEnvironment systemEnvironment) throws IOException {
+    public ConfigRepository(SystemEnvironment systemEnvironment) throws IOException{
         workingDir = systemEnvironment.getConfigRepoDir();
         File configRepoDir = new File(workingDir, ".git");
         gitRepo = new FileRepository(configRepoDir);
@@ -393,5 +394,21 @@ public class ConfigRepository {
             LOGGER.error(format("Error while trying to clean up config repository, CurrentBranch: %s \n : \n Message: %s", currentBranch, e.getMessage(), e.getStackTrace()), e);
             throw new RuntimeException(e);
         }
+    }
+
+//    @Scheduled(cron = "* * * * *")
+    public void garbageCollect() throws Exception {
+        doLocked(new VoidThrowingFn<Exception>() {
+            public void run() throws Exception {
+                try {
+                    LOGGER.error("Before running GC :" + git.gc().getStatistics().get("sizeOfLooseObjects"));
+                    git.gc().call();
+                    LOGGER.error("After running GC :" + git.gc().getStatistics().get("sizeOfLooseObjects"));
+                } catch (GitAPIException e) {
+                    LOGGER.error("Could not perform GC", e);
+                    throw e;
+                }
+            }
+        });
     }
 }
