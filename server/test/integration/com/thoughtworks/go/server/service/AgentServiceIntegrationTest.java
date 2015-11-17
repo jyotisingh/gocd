@@ -1087,7 +1087,7 @@ public class AgentServiceIntegrationTest {
                 new TriStateSelection("b", TriStateSelection.Action.add)));
 
         goConfigDao.load();
-        goConfigDao.updateAgentResources(agent.getUuid(), new Resources("linux,java"));
+        agentConfigService.updateAgentResources(agent.getUuid(), new Resources("linux,java"));
 
         assertThat(agentService.agents().size(), is(1));
 

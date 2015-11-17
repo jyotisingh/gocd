@@ -67,10 +67,6 @@ public class GoConfigDao {
         return cachedConfigService.getFileLocation();
     }
 
-    public void addAgent(final AgentConfig agentConfig) {
-        updateConfig(createAddAgentCommand(agentConfig));
-    }
-
     public void updateMailHost(MailHost mailHost) {
         updateConfig(mailHostUpdater(mailHost));
     }
@@ -83,83 +79,8 @@ public class GoConfigDao {
         updateConfig(environmentAdder(environmentConfig));
     }
 
-    public void updateAgentResources(final String uuid, final Resources resources) {
-        updateConfig(new UpdateResourcesCommand(uuid, resources));
-    }
 
-    public void updateAgentApprovalStatus(final String uuid, final Boolean isDenied) {
-        updateConfig(updateApprovalStatus(uuid, isDenied));
-    }
 
-    public static UpdateConfigCommand updateApprovalStatus(final String uuid, final Boolean isDenied) {
-        return new UpdateAgentApprovalStatus(uuid, isDenied);
-    }
-
-    public static DeleteAgent deleteAgentCommand(String uuid) {
-        return new DeleteAgent(uuid);
-    }
-
-    public void deleteAgents(AgentInstance... agentInstances) {
-        updateConfig(commandForDeletingAgents(agentInstances));
-    }
-
-    CompositeConfigCommand commandForDeletingAgents(AgentInstance... agentInstances) {
-        GoConfigDao.CompositeConfigCommand command = new GoConfigDao.CompositeConfigCommand();
-        for (AgentInstance agentInstance : agentInstances) {
-            command.addCommand(deleteAgentCommand(agentInstance.getUuid()));
-        }
-        return command;
-    }
-
-    private static class UpdateAgentIp implements UpdateConfigCommand, UserAware {
-        private final String uuid;
-        private final String ipAddress;
-        private final String userName;
-
-        private UpdateAgentIp(String uuid, String ipAddress, String userName) {
-            this.uuid = uuid;
-            this.ipAddress = ipAddress;
-            this.userName = userName;
-        }
-
-        public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
-            AgentConfig agentConfig = cruiseConfig.agents().getAgentByUuid(uuid);
-            bombIfNull(agentConfig, "Unable to set agent ipAddress; Agent [" + uuid + "] not found.");
-            agentConfig.setIpAddress(ipAddress);
-            return cruiseConfig;
-        }
-
-        public ConfigModifyingUser user() {
-            return new ConfigModifyingUser(userName);
-        }
-    }
-
-    public static class UpdateAgentHostname implements UpdateConfigCommand, UserAware {
-        private final String uuid;
-        private final String hostname;
-        private final String userName;
-
-        public UpdateAgentHostname(String uuid, String hostname, String userName) {
-            this.uuid = uuid;
-            this.hostname = hostname;
-            this.userName = userName;
-        }
-
-        public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
-            AgentConfig agentConfig = cruiseConfig.agents().getAgentByUuid(uuid);
-            bombIfNull(agentConfig, "Unable to set agent hostname; Agent [" + uuid + "] not found.");
-            agentConfig.setHostName(hostname);
-            return cruiseConfig;
-        }
-
-        public ConfigModifyingUser user() {
-            return new ConfigModifyingUser(userName);
-        }
-    }
-
-    public void updateAgentIp(final String uuid, final String ipAddress, String userName) {
-        updateConfig(new UpdateAgentIp(uuid, ipAddress, userName));
-    }
 
     public CruiseConfig loadForEditing() {
         return cachedConfigService.loadForEditing();
@@ -302,9 +223,6 @@ public class GoConfigDao {
     }
 
 
-    public static UpdateConfigCommand createAddAgentCommand(final AgentConfig agentConfig) {
-        return new AddAgentCommand(agentConfig);
-    }
 
     private UpdateConfigCommand pipelineAdder(final PipelineConfig pipelineConfig, final String groupName) {
         return new UpdateConfigCommand() {
@@ -334,203 +252,8 @@ public class GoConfigDao {
         };
     }
 
-    /**
-     * @understands how to add an agent to the config file
-     */
-    private static class AddAgentCommand implements UpdateConfigCommand {
-        private final AgentConfig agentConfig;
 
-        public AddAgentCommand(AgentConfig agentConfig) {
-            this.agentConfig = agentConfig;
-        }
 
-        public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
-            cruiseConfig.agents().add(agentConfig);
-            return cruiseConfig;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-
-            AddAgentCommand that = (AddAgentCommand) o;
-
-            if (agentConfig != null ? !agentConfig.equals(that.agentConfig) : that.agentConfig != null) {
-                return false;
-            }
-
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            return agentConfig != null ? agentConfig.hashCode() : 0;
-        }
-
-        @Override
-        public String toString() {
-            return "AddAgentcommand{" +
-                    "agentConfig=" + agentConfig +
-                    '}';
-        }
-
-    }
-
-    /**
-     * @understands how to update the agent approval status
-     */
-    private static class UpdateAgentApprovalStatus implements UpdateConfigCommand {
-        private final String uuid;
-        private final Boolean denied;
-
-        public UpdateAgentApprovalStatus(String uuid, Boolean denied) {
-            this.uuid = uuid;
-            this.denied = denied;
-        }
-
-        public CruiseConfig update(CruiseConfig cruiseConfig) {
-            AgentConfig agentConfig = cruiseConfig.agents().getAgentByUuid(uuid);
-            bombIfNull(agentConfig, "Unable to set agent approval status; Agent [" + uuid + "] not found.");
-            agentConfig.setDisabled(denied);
-            return cruiseConfig;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-
-            UpdateAgentApprovalStatus that = (UpdateAgentApprovalStatus) o;
-
-            if (denied != null ? !denied.equals(that.denied) : that.denied != null) {
-                return false;
-            }
-            if (uuid != null ? !uuid.equals(that.uuid) : that.uuid != null) {
-                return false;
-            }
-
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int result = uuid != null ? uuid.hashCode() : 0;
-            result = 31 * result + (denied != null ? denied.hashCode() : 0);
-            return result;
-        }
-
-        @Override
-        public String toString() {
-            return "UpdateAgentApprovalStatus{" +
-                    "uuid='" + uuid + '\'' +
-                    ", denied=" + denied +
-                    '}';
-        }
-    }
-
-    /**
-     * @understands how to delete agent
-     */
-    private static class DeleteAgent implements UpdateConfigCommand {
-        private final String uuid;
-
-        public DeleteAgent(String uuid) {
-            this.uuid = uuid;
-        }
-
-        public CruiseConfig update(CruiseConfig cruiseConfig) {
-            AgentConfig agentConfig = cruiseConfig.agents().getAgentByUuid(uuid);
-            if (agentConfig.isNull()) {
-                bomb("Unable to delete agent; Agent [" + uuid + "] not found.");
-            }
-            cruiseConfig.getEnvironments().removeAgentFromAllEnvironments(uuid);
-            cruiseConfig.agents().remove(agentConfig);
-            return cruiseConfig;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-
-            DeleteAgent that = (DeleteAgent) o;
-
-            if (uuid != null ? !uuid.equals(that.uuid) : that.uuid != null) {
-                return false;
-            }
-
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            return uuid != null ? uuid.hashCode() : 0;
-        }
-
-        @Override
-        public String toString() {
-            return "DeleteAgent{" +
-                    "uuid='" + uuid + '\'' +
-                    '}';
-        }
-    }
-
-    public static class UpdateResourcesCommand implements UpdateConfigCommand {
-        private final String uuid;
-        private final Resources resources;
-
-        public UpdateResourcesCommand(String uuid, Resources resources) {
-            this.uuid = uuid;
-            this.resources = resources;
-        }
-
-        public CruiseConfig update(CruiseConfig cruiseConfig) {
-            AgentConfig agentConfig = cruiseConfig.agents().getAgentByUuid(uuid);
-            bombIfNull(agentConfig, "Unable to set agent resources; Agent [" + uuid + "] not found.");
-            agentConfig.setResources(resources);
-            return cruiseConfig;
-        }
-    }
-
-    public static class ModifyResourcesCommand implements UpdateConfigCommand {
-        private final String uuid;
-        private final Resource resource;
-        private final TriStateSelection.Action action;
-
-        public ModifyResourcesCommand(String uuid, Resource resource, TriStateSelection.Action action) {
-            this.uuid = uuid;
-            this.resource = resource;
-            this.action = action;
-        }
-
-        public CruiseConfig update(CruiseConfig cruiseConfig) {
-            AgentConfig agentConfig = cruiseConfig.agents().getAgentByUuid(uuid);
-            bombIfNull(agentConfig, "Unable to set agent resources; Agent [" + uuid + "] not found.");
-            if (action.equals(TriStateSelection.Action.add)) {
-                agentConfig.addResource(resource);
-            } else if (action.equals(TriStateSelection.Action.remove)) {
-                agentConfig.removeResource(resource);
-            } else if (action.equals(TriStateSelection.Action.nochange)) {
-                //do nothing
-            } else {
-                bomb(String.format("unsupported action '%s'", action));
-            }
-            return cruiseConfig;
-        }
-    }
 
     public static class ModifyRoleCommand implements UpdateConfigCommand {
         private String user;
