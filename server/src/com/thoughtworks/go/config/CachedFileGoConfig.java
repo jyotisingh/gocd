@@ -16,20 +16,20 @@
 
 package com.thoughtworks.go.config;
 
-import java.util.ArrayList;
-import java.util.List;
-
+import com.thoughtworks.go.config.commands.EntityConfigUpdateCommand;
 import com.thoughtworks.go.config.validation.GoConfigValidity;
 import com.thoughtworks.go.listener.ConfigChangedListener;
 import com.thoughtworks.go.listener.EntityConfigChangedListener;
 import com.thoughtworks.go.server.domain.Username;
-import com.thoughtworks.go.server.service.EntityConfigSaveCommand;
 import com.thoughtworks.go.serverhealth.HealthStateType;
 import com.thoughtworks.go.serverhealth.ServerHealthService;
 import com.thoughtworks.go.serverhealth.ServerHealthState;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static com.thoughtworks.go.server.service.GoConfigService.INVALID_CRUISE_CONFIG_XML;
 import static com.thoughtworks.go.util.ExceptionUtils.bomb;
@@ -111,21 +111,22 @@ public class CachedFileGoConfig implements CachedGoConfig {
         return writeWithLock(updateConfigCommand, holder);
     }
 
+    @Override
+    public synchronized EntityConfigSaveResult writeEntityWithLock(EntityConfigUpdateCommand updateConfigCommand, Username currentUser) {
+        GoConfigHolder holder = new GoConfigHolder(currentConfig, currentConfigForEdit);
+        return writeEntityWithLock(updateConfigCommand, holder, currentUser);
+    }
+
     public synchronized ConfigSaveState writeWithLock(UpdateConfigCommand updateConfigCommand, GoConfigHolder holder) {
         GoFileConfigDataSource.GoConfigSaveResult saveResult = dataSource.writeWithLock(updateConfigCommand, holder);
         saveValidConfigToCacheAndNotifyConfigChangeListeners(saveResult.getConfigHolder());
         return saveResult.getConfigSaveState();
     }
 
-    public synchronized <T> void writeEntityWithLock(T pipelineConfig, EntityConfigSaveCommand<T> saveCommand, Username currentUser) {
-        GoConfigHolder serverCopy = new GoConfigHolder(currentConfig, currentConfigForEdit);
-        writeEntityWithLock(pipelineConfig, serverCopy, saveCommand, currentUser);
-    }
-
-    public synchronized <T> EntityConfigSaveResult writeEntityWithLock(T pipelineConfig, GoConfigHolder serverCopy, EntityConfigSaveCommand<T> saveCommand, Username currentUser) {
-        EntityConfigSaveResult saveResult = dataSource.writeEntityWithLock(pipelineConfig, serverCopy, saveCommand, currentUser);
-        saveValidConfigToCacheAndNotifyEntityConfigChangeListeners(saveResult);
-        return saveResult;
+    public synchronized EntityConfigSaveResult writeEntityWithLock(EntityConfigUpdateCommand updateConfigCommand, GoConfigHolder holder, Username currentUser) {
+        EntityConfigSaveResult entityConfigSaveResult = dataSource.writeEntityWithLock(updateConfigCommand, holder, currentUser);
+        saveValidConfigToCacheAndNotifyEntityConfigChangeListeners(entityConfigSaveResult);
+        return entityConfigSaveResult;
     }
 
     private <T> void saveValidConfigToCacheAndNotifyEntityConfigChangeListeners(EntityConfigSaveResult<T> saveResult) {

@@ -34,9 +34,9 @@ import com.thoughtworks.go.server.ui.AgentViewModel;
 import com.thoughtworks.go.server.ui.AgentsViewModel;
 import com.thoughtworks.go.server.util.UuidGenerator;
 import com.thoughtworks.go.serverhealth.ServerHealthService;
+import com.thoughtworks.go.service.ConfigRepository;
 import com.thoughtworks.go.util.*;
 import org.hamcrest.Description;
-import org.hamcrest.Matcher;
 import org.hamcrest.TypeSafeMatcher;
 import org.junit.After;
 import org.junit.Before;
@@ -52,7 +52,9 @@ import java.util.*;
 
 import static java.lang.String.format;
 import static org.hamcrest.Matchers.*;
+import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNot.not;
+import static org.hamcrest.core.IsNull.nullValue;
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.any;
 import static org.mockito.Mockito.*;
@@ -72,6 +74,7 @@ public class AgentServiceIntegrationTest {
     @Autowired private SecurityService securityService;
     @Autowired private ServerHealthService serverHealthService;
     @Autowired private AgentDao agentDao;
+    @Autowired private ConfigRepository configRepository;
 
     private static final GoConfigFileHelper CONFIG_HELPER = new GoConfigFileHelper();
     private static final String UUID = "uuid";
@@ -494,7 +497,7 @@ public class AgentServiceIntegrationTest {
 
         HttpOperationResult operationResult = new HttpOperationResult();
         agentService.disableAgents(USERNAME, operationResult, Arrays.asList(uuid));
-        assertAgentDisablingSucceeded(operationResult,uuid);
+        assertAgentDisablingSucceeded(operationResult, uuid);
         Agents agents = agentConfigService.agents();
         assertThat(agentService.findPhysicalAgents().size(), is(1));
         assertThat(agents.size(), is(1));
@@ -764,7 +767,7 @@ public class AgentServiceIntegrationTest {
     public void shouldChangeAgentToIdleWhenAgentIsReApprovedInConfigFile() throws Exception {
         disableAgent();
 
-        agentConfigService.updateAgentApprovalStatus("uuid1", false);
+        agentConfigService.updateAgentApprovalStatus("uuid1", false, Username.ANONYMOUS);
 
         AgentInstance instance = agentService.findAgentAndRefreshStatus("uuid1");
         assertThat(instance.getStatus(), is(AgentStatus.Idle));
@@ -1053,6 +1056,7 @@ public class AgentServiceIntegrationTest {
 
     @Test
     public void testShouldUpdateAnAgentIfInputsAreValid() throws Exception {
+        String headCommitBeforeUpdate = configRepository.getCurrentRevCommit().name();
         AgentConfig agent = createDisabledAndIdleAgent(UUID);
         createEnvironment("a", "b");
 
@@ -1073,6 +1077,8 @@ public class AgentServiceIntegrationTest {
         assertThat(agentService.agents().get(0).resources(), is(new Resources("linux,java")));
         assertThat(agentService.agents().get(0).isEnabled(), is(false));
         assertEquals(agentService.agents().get(0).getEnvironments(), new HashSet<>(Arrays.asList("a", "b")));
+        assertThat(configRepository.getCurrentRevCommit().name(), is(not(headCommitBeforeUpdate)));
+        assertThat(configRepository.getCurrentRevision().getUsername(), is(USERNAME.getDisplayName()));
     }
 
     @Test
@@ -1170,7 +1176,7 @@ public class AgentServiceIntegrationTest {
         AgentConfig pending = new AgentConfig("uuid1", "agent1", "192.168.0.1");
         agentService.requestRegistration(AgentRuntimeInfo.fromServer(pending, false, "/var/lib", 0L, "linux"));
         agentService.approve("uuid1");
-        agentConfigService.updateAgentApprovalStatus("uuid1", true);
+        agentConfigService.updateAgentApprovalStatus("uuid1", true, Username.ANONYMOUS);
     }
 
     private boolean isDisabled(AgentConfig agentConfig) {
@@ -1201,7 +1207,8 @@ public class AgentServiceIntegrationTest {
         assertTrue(agentService.findAgentAndRefreshStatus(uuid).isIdle());
 
         agentService.disableAgents(USERNAME, new HttpOperationResult(), Arrays.asList(agentConfig.getUuid()));
-        assertThat(isDisabled(agentConfig),is(true));
-        return agentConfig;
+        AgentConfig updatedAgent = goConfigDao.load().agents().getAgentByUuid(agentConfig.getUuid());
+        assertThat(isDisabled(updatedAgent),is(true));
+        return updatedAgent;
     }
 }

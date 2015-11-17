@@ -17,18 +17,16 @@
 package com.thoughtworks.go.config;
 
 import com.rits.cloning.Cloner;
+import com.thoughtworks.go.config.commands.CheckedUpdateCommand;
+import com.thoughtworks.go.config.commands.EntityConfigUpdateCommand;
 import com.thoughtworks.go.config.update.ConfigUpdateCheckFailedException;
 import com.thoughtworks.go.config.validation.GoConfigValidity;
-import com.thoughtworks.go.domain.AgentInstance;
-import com.thoughtworks.go.i18n.LocalizedMessage;
 import com.thoughtworks.go.listener.ConfigChangedListener;
 import com.thoughtworks.go.metrics.domain.context.Context;
 import com.thoughtworks.go.metrics.domain.probes.ProbeType;
 import com.thoughtworks.go.metrics.service.MetricsProbeService;
 import com.thoughtworks.go.presentation.TriStateSelection;
 import com.thoughtworks.go.server.domain.Username;
-import com.thoughtworks.go.server.service.EntityConfigSaveCommand;
-import com.thoughtworks.go.server.service.result.LocalizedOperationResult;
 import com.thoughtworks.go.util.ExceptionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -37,7 +35,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static com.thoughtworks.go.util.ExceptionUtils.*;
+import static com.thoughtworks.go.util.ExceptionUtils.bomb;
+import static com.thoughtworks.go.util.ExceptionUtils.bombIfNull;
 
 /**
  * @understands how to modify the cruise config sources
@@ -94,18 +93,6 @@ public class GoConfigDao {
         return cachedConfigService.currentConfig().getMd5();
     }
 
-    public <T> void updateEntity(T entity, LocalizedOperationResult result, Username currentUser, EntityConfigSaveCommand<T> saveCommand) {
-        synchronized (writeLock) {
-            if (saveCommand.hasWritePermissions()) {
-                try {
-                    cachedConfigService.writeEntityWithLock(entity, saveCommand, currentUser);
-                } catch (ConfigUpdateCheckFailedException e) {
-                    result.unprocessableEntity(LocalizedMessage.string("ENTITY_CONFIG_VALIDATION_FAILED", entity.getClass().getAnnotation(ConfigTag.class), saveCommand.getId()));
-                }
-            }
-        }
-    }
-
     public ConfigSaveState updateConfig(UpdateConfigCommand command) {
         Context context = metricsProbeService.begin(ProbeType.UPDATE_CONFIG);
         try {
@@ -124,6 +111,19 @@ public class GoConfigDao {
                         ((ConfigAwareUpdate) command).afterUpdate(clonedConfig());
                     }
                 }
+            }
+        } finally {
+            metricsProbeService.end(ProbeType.UPDATE_CONFIG, context);
+        }
+    }
+    public void updateConfig(EntityConfigUpdateCommand command, Username currentUser) {
+        Context context = metricsProbeService.begin(ProbeType.UPDATE_CONFIG);
+        try {
+            synchronized (writeLock) {
+                if (!command.canContinue(cachedConfigService.currentConfig())) {
+                    throw new ConfigUpdateCheckFailedException();
+                }
+                cachedConfigService.writeEntityWithLock(command, currentUser);
             }
         } finally {
             metricsProbeService.end(ProbeType.UPDATE_CONFIG, context);

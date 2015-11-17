@@ -86,6 +86,20 @@ describe ApiV2::AgentRepresenter do
     end
   end
 
+  it 'renders config errors during serialization' do
+    presenter   = ApiV2::AgentRepresenter.new(agent_with_config_errors)
+    actual_json = presenter.to_hash(url_builder: UrlBuilder.new)
+
+    expected_errors = {
+        ip_address: ["'IP' is an invalid IP address."],
+        resources: [
+        "Resource name 'foo%' is not valid. Valid names much match '^[-\\w\\s|.]*$'",
+        "Resource name 'bar$' is not valid. Valid names much match '^[-\\w\\s|.]*$'"
+      ]
+    }
+    expect(actual_json[:errors]).to eq(expected_errors)
+  end
+
   def agent_hash
     {
       uuid:               'some-uuid',

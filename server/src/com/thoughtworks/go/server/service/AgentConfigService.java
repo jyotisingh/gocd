@@ -16,25 +16,38 @@
 
 package com.thoughtworks.go.server.service;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import com.google.caja.util.Sets;
 import com.thoughtworks.go.config.*;
+import com.thoughtworks.go.config.exceptions.GoConfigInvalidException;
+import com.thoughtworks.go.config.exceptions.GoConfigValidationFailedException;
+import com.thoughtworks.go.config.exceptions.NoSuchEnvironmentException;
+import com.thoughtworks.go.config.update.AgentsUpdateCommand;
 import com.thoughtworks.go.domain.AgentInstance;
+import com.thoughtworks.go.domain.ConfigErrors;
 import com.thoughtworks.go.listener.AgentChangeListener;
 import com.thoughtworks.go.presentation.TriStateSelection;
 import com.thoughtworks.go.server.domain.AgentInstances;
+import com.thoughtworks.go.server.domain.Username;
+import com.thoughtworks.go.server.service.result.HttpOperationResult;
+import com.thoughtworks.go.serverhealth.HealthStateScope;
+import com.thoughtworks.go.serverhealth.HealthStateType;
 import com.thoughtworks.go.util.TriState;
+import com.thoughtworks.go.validation.AgentConfigsUpdateValidator;
+import com.thoughtworks.go.validation.ConfigUpdateValidator;
+import com.thoughtworks.go.validation.DoNothingValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import static com.thoughtworks.go.util.ExceptionUtils.bomb;
 import static com.thoughtworks.go.util.ExceptionUtils.bombIfNull;
+import static java.util.Arrays.asList;
 
 /**
  * @understands how to convert persistant Agent configuration to useful objects and back
@@ -57,19 +70,20 @@ public class AgentConfigService {
         goConfigService.register(agentChangeListener);
     }
 
-    public void disableAgents(AgentInstance... agentInstance) {
-        disableAgents(true, agentInstance);
+    public void disableAgents(Username currentUser, AgentInstance... agentInstance) {
+        disableAgents(true, currentUser, agentInstance);
     }
 
-    public void enableAgents(AgentInstance... agentInstance) {
-        disableAgents(false, agentInstance);
+    public void enableAgents(Username currentUser, AgentInstance... agentInstance) {
+        disableAgents(false, currentUser, agentInstance);
     }
 
-    private void disableAgents(boolean disabled, AgentInstance... instances) {
+    private void disableAgents(boolean disabled, Username currentUser, AgentInstance... instances) {
         GoConfigDao.CompositeConfigCommand command = new GoConfigDao.CompositeConfigCommand();
+        ArrayList<String> uuids = new ArrayList<String>();
         for (AgentInstance agentInstance : instances) {
             String uuid = agentInstance.getUuid();
-
+            uuids.add(uuid);
             if (goConfigService.hasAgent(uuid)) {
                 command.addCommand(updateApprovalStatus(uuid, disabled));
             } else {
@@ -78,15 +92,20 @@ public class AgentConfigService {
                 command.addCommand(createAddAgentCommand(agentConfig));
             }
         }
-        goConfigService.updateConfig(command);
+        updateAgentWithoutValidations(command, currentUser);
     }
 
     protected static UpdateConfigCommand updateApprovalStatus(final String uuid, final Boolean isDenied) {
         return new UpdateAgentApprovalStatus(uuid, isDenied);
     }
 
-    public void deleteAgents(AgentInstance... agentInstances) {
-        goConfigService.updateConfig(commandForDeletingAgents(agentInstances));
+    public void deleteAgents(Username currentUser, AgentInstance... agentInstances) {
+        GoConfigDao.CompositeConfigCommand commandForDeletingAgents = commandForDeletingAgents(agentInstances);
+        ArrayList<String> uuids = new ArrayList<>();
+        for (AgentInstance agentInstance : agentInstances) {
+            uuids.add(agentInstance.getUuid());
+        }
+        updateAgentWithoutValidations(commandForDeletingAgents, currentUser);
     }
 
     protected GoConfigDao.CompositeConfigCommand commandForDeletingAgents(AgentInstance... agentInstances) {
@@ -99,6 +118,33 @@ public class AgentConfigService {
 
     public static DeleteAgent deleteAgentCommand(String uuid) {
         return new DeleteAgent(uuid);
+    }
+
+    private void updateAgents(final UpdateConfigCommand command, final ConfigUpdateValidator validator, Username currentUser) {
+        goConfigService.updateConfig(new AgentsUpdateCommand(goConfigService, command, validator), currentUser);
+    }
+
+    public void updateAgent(UpdateConfigCommand command, String uuid, Username currentUser) {
+        updateAgents(command, new AgentConfigsUpdateValidator(asList(uuid)), currentUser);
+    }
+
+    public AgentConfig updateAgent(UpdateConfigCommand command, String uuid, HttpOperationResult result, Username currentUser) {
+        AgentConfigsUpdateValidator validator = new AgentConfigsUpdateValidator(asList(uuid));
+        try {
+            updateAgents(command, validator, currentUser);
+            result.ok(String.format("Updated agent with uuid %s.", uuid));
+        } catch (Exception e) {
+            if (e.getCause() instanceof GoConfigInvalidException || e.getCause() instanceof NoSuchEnvironmentException || e instanceof GoConfigValidationFailedException) {
+                result.unprocessibleEntity("Updating agent failed:", e.getMessage(), HealthStateType.general(HealthStateScope.GLOBAL));
+            } else {
+                result.internalServerError("Updating agent failed:" + e.getMessage(), HealthStateType.general(HealthStateScope.GLOBAL));
+            }
+        }
+        return validator.getUpdatedAgents().get(0);
+    }
+
+    private void updateAgentWithoutValidations(UpdateConfigCommand command, Username currentUser) {
+        updateAgents(command, new DoNothingValidator(), currentUser);
     }
 
     /**
@@ -151,8 +197,9 @@ public class AgentConfigService {
                     '}';
         }
     }
+
     public void updateAgentIpByUuid(String uuid, String ipAddress, String userName) {
-        goConfigService.updateConfig(new UpdateAgentIp(uuid, ipAddress, userName));
+        updateAgents(new UpdateAgentIp(uuid, ipAddress, userName), new AgentConfigsUpdateValidator(asList(uuid)), new Username(new CaseInsensitiveString(userName)));
     }
 
     private static class UpdateAgentIp implements UpdateConfigCommand, UserAware {
@@ -179,9 +226,8 @@ public class AgentConfigService {
     }
 
 
-    public void updateAgentAttributes(String uuid, String userName, String hostname, String resources, String environments, TriState enable, AgentInstances agentInstances) {
-        GoConfigDao.CompositeConfigCommand command = new GoConfigDao.CompositeConfigCommand();
-
+    public AgentConfig updateAgentAttributes(final String uuid, Username username, String hostname, String resources, String environments, TriState enable, AgentInstances agentInstances, HttpOperationResult result) {
+        final GoConfigDao.CompositeConfigCommand command = new GoConfigDao.CompositeConfigCommand();
         if (!goConfigService.hasAgent(uuid) && enable.isTrue()) {
             AgentInstance agentInstance = agentInstances.findAgent(uuid);
             AgentConfig agentConfig = agentInstance.agentConfig();
@@ -197,7 +243,7 @@ public class AgentConfigService {
         }
 
         if (hostname != null) {
-            command.addCommand(new UpdateAgentHostname(uuid, hostname, userName));
+            command.addCommand(new UpdateAgentHostname(uuid, hostname, username.getUsername().toString()));
         }
 
         if (resources != null) {
@@ -206,7 +252,7 @@ public class AgentConfigService {
 
         if (environments != null) {
             Set<String> existingEnvironments = goConfigService.getCurrentConfig().getEnvironments().environmentsForAgent(uuid);
-            Set<String> newEnvironments = new HashSet<>(Arrays.asList(environments.split(",")));
+            Set<String> newEnvironments = new HashSet<>(asList(environments.split(",")));
 
             Set<String> environmentsToRemove = Sets.difference(existingEnvironments, newEnvironments);
             Set<String> environmentsToAdd = Sets.difference(newEnvironments, existingEnvironments);
@@ -220,25 +266,25 @@ public class AgentConfigService {
             }
         }
 
-        goConfigService.updateConfig(command);
+        return updateAgent(command, uuid, result, username);
     }
 
-
-    public void saveOrUpdateAgent(AgentInstance agentInstance) {
+    public void saveOrUpdateAgent(AgentInstance agentInstance, Username currentUser) {
         AgentConfig agentConfig = agentInstance.agentConfig();
         if (goConfigService.hasAgent(agentConfig.getUuid())) {
-            this.updateAgentApprovalStatus(agentConfig.getUuid(), agentConfig.isDisabled());
+            this.updateAgentApprovalStatus(agentConfig.getUuid(), agentConfig.isDisabled(), currentUser);
         } else {
-            this.addAgent(agentConfig);
+            this.addAgent(agentConfig, currentUser);
         }
     }
 
+    @Deprecated
     public void approvePendingAgent(AgentInstance agentInstance) {
         agentInstance.enable();
         if (goConfigService.hasAgent(agentInstance.getUuid())) {
             LOGGER.warn("Registered agent with the same uuid [" + agentInstance + "] already approved.");
         } else {
-            goConfigService.updateConfig(createAddAgentCommand(agentInstance.agentConfig()));
+            updateAgent(createAddAgentCommand(agentInstance.agentConfig()), agentInstance.getUuid(), new HttpOperationResult(), Username.ANONYMOUS);
         }
     }
 
@@ -293,30 +339,57 @@ public class AgentConfigService {
 
     }
 
+    @Deprecated
     public void updateAgentResources(final String uuid, final Resources resources) {
-        goConfigService.updateConfig(new UpdateResourcesCommand(uuid, resources));
+        updateAgent(new UpdateResourcesCommand(uuid, resources), uuid, Username.ANONYMOUS);
     }
 
-    public void updateAgentApprovalStatus(final String uuid, final Boolean isDenied) {
-        goConfigService.updateConfig(updateApprovalStatus(uuid, isDenied));
+    public void updateAgentApprovalStatus(final String uuid, final Boolean isDenied, Username currentUser) {
+        updateAgentWithoutValidations(updateApprovalStatus(uuid, isDenied), currentUser);
     }
 
-    public void addAgent(AgentConfig agentConfig) {
-        goConfigService.updateConfig(createAddAgentCommand(agentConfig));
+    public void addAgent(AgentConfig agentConfig, Username currentUser) {
+        updateAgent(createAddAgentCommand(agentConfig), agentConfig.getUuid(), currentUser);
     }
 
-    public void modifyResources(AgentInstance[] agentInstances, List<TriStateSelection> selections) {
+    public void modifyResources(AgentInstance[] agentInstances, List<TriStateSelection> selections, Username currentUser) {
         GoConfigDao.CompositeConfigCommand command = new GoConfigDao.CompositeConfigCommand();
+        ArrayList<String> uuids = new ArrayList<>();
         for (AgentInstance agentInstance : agentInstances) {
             String uuid = agentInstance.getUuid();
+            uuids.add(uuid);
             if (goConfigService.hasAgent(uuid)) {
                 for (TriStateSelection selection : selections) {
                     command.addCommand(new ModifyResourcesCommand(uuid, new Resource(selection.getValue()), selection.getAction()));
                 }
             }
         }
-        goConfigService.updateConfig(command);
+        AgentConfigsUpdateValidator validator = new AgentConfigsUpdateValidator(uuids);
+        updateAgents(command, validator, currentUser);
+//        try {
+//        } catch (Exception e) {
+//            if (e.getCause() instanceof GoConfigInvalidException || e.getCause() instanceof NoSuchEnvironmentException || e instanceof GoConfigValidationFailedException) {
+//                List<ConfigErrors> all = new ArrayList<>();
+//                for (AgentConfig agentConfig : validator.getUpdatedAgents()) {
+//                    List<ConfigErrors> errors = getAllErrors(agentConfig);
+//                    all.addAll(errors);
+//                }
+//                throw new GoConfigInvalidException(null, all);
+//            }
+//        }
     }
+
+    private List<ConfigErrors> getAllErrors(Validatable v) {
+        final List<ConfigErrors> allErrors = new ArrayList<ConfigErrors>();
+        new GoConfigGraphWalker(v).walk(new ErrorCollectingHandler(allErrors) {
+            @Override
+            public void handleValidation(Validatable validatable, ValidationContext context) {
+                // do nothing here
+            }
+        });
+        return allErrors;
+    }
+
 
     public Agents findAgents(List<String> uuids) {
         return agents().filter(uuids);
@@ -394,6 +467,7 @@ public class AgentConfigService {
             return cruiseConfig;
         }
     }
+
     public static class ModifyResourcesCommand implements UpdateConfigCommand {
         private final String uuid;
         private final Resource resource;
@@ -420,6 +494,7 @@ public class AgentConfigService {
             return cruiseConfig;
         }
     }
+
     public static class UpdateAgentHostname implements UpdateConfigCommand, UserAware {
         private final String uuid;
         private final String hostname;

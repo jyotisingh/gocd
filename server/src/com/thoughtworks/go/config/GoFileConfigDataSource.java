@@ -17,20 +17,22 @@
 package com.thoughtworks.go.config;
 
 import com.rits.cloning.Cloner;
+import com.thoughtworks.go.config.commands.EntityConfigUpdateCommand;
 import com.thoughtworks.go.config.exceptions.*;
 import com.thoughtworks.go.config.registry.ConfigElementImplementationRegistry;
-import com.thoughtworks.go.config.update.ConfigUpdateCheckFailedException;
 import com.thoughtworks.go.domain.GoConfigRevision;
 import com.thoughtworks.go.metrics.service.MetricsProbeService;
 import com.thoughtworks.go.server.domain.Username;
-import com.thoughtworks.go.server.service.EntityConfigSaveCommand;
 import com.thoughtworks.go.server.util.ServerVersion;
 import com.thoughtworks.go.serverhealth.HealthStateScope;
 import com.thoughtworks.go.serverhealth.HealthStateType;
 import com.thoughtworks.go.serverhealth.ServerHealthService;
 import com.thoughtworks.go.serverhealth.ServerHealthState;
 import com.thoughtworks.go.service.ConfigRepository;
-import com.thoughtworks.go.util.*;
+import com.thoughtworks.go.util.CachedDigestUtils;
+import com.thoughtworks.go.util.FileUtil;
+import com.thoughtworks.go.util.SystemEnvironment;
+import com.thoughtworks.go.util.TimeProvider;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
@@ -211,28 +213,6 @@ public class GoFileConfigDataSource {
         }
     }
 
-    public synchronized <T> EntityConfigSaveResult writeEntityWithLock(T entityConfig, GoConfigHolder serverCopy, EntityConfigSaveCommand saveCommand, Username currentUser) {
-        CruiseConfig modifiedConfig = cloner.deepClone(serverCopy.configForEdit);
-        saveCommand.updateConfig(modifiedConfig, entityConfig);
-        CruiseConfig preprocessedConfig = cloner.deepClone(modifiedConfig);
-        MagicalGoConfigXmlLoader.preprocess(preprocessedConfig);
-        T preprocessedEntity = (T) saveCommand.findMatchingEntityIn(preprocessedConfig);
-        if (saveCommand.isValid(preprocessedConfig, preprocessedEntity)) {
-            try {
-                LOGGER.info(String.format("[Configuration Changed] Saving updated configuration."));
-                String configAsXml = configAsXml(modifiedConfig, true);
-                writeToConfigXmlFile(configAsXml);
-                configRepository.checkin(new GoConfigRevision(configAsXml, CachedDigestUtils.md5Hex(configAsXml), currentUser.getUsername().toString(), serverVersion.version(), timeProvider));
-                LOGGER.debug("[Config Save] Done writing with lock");
-                return new EntityConfigSaveResult(entityConfig, new GoConfigHolder(preprocessedConfig, modifiedConfig));
-            } catch (Exception e) {
-                throw new RuntimeException("failed to save : " + e.getMessage());
-            }
-        } else {
-            throw new ConfigUpdateCheckFailedException();
-        }
-    }
-
     public synchronized GoConfigSaveResult writeWithLock(UpdateConfigCommand updatingCommand, GoConfigHolder configHolder) {
         try {
 
@@ -255,6 +235,32 @@ public class GoFileConfigDataSource {
             throw bomb(e.getMessage(), e);
         } finally {
             LOGGER.debug("[Config Save] Done writing with lock");
+        }
+    }
+
+    public synchronized EntityConfigSaveResult writeEntityWithLock(EntityConfigUpdateCommand updatingCommand, GoConfigHolder configHolder, Username currentUser) {
+        CruiseConfig modifiedConfig = cloner.deepClone(configHolder.configForEdit);
+        try {
+            updatingCommand.update(modifiedConfig);
+        } catch (Exception e) {
+            bomb(e);
+        }
+        CruiseConfig preprocessedConfig = cloner.deepClone(modifiedConfig);
+        MagicalGoConfigXmlLoader.preprocess(preprocessedConfig);
+
+        if (updatingCommand.isValid(preprocessedConfig)) {
+            try {
+                LOGGER.info(String.format("[Configuration Changed] Saving updated configuration."));
+                String configAsXml = configAsXml(modifiedConfig, true);
+                writeToConfigXmlFile(configAsXml);
+                configRepository.checkin(new GoConfigRevision(configAsXml, CachedDigestUtils.md5Hex(configAsXml), currentUser.getUsername().toString(), serverVersion.version(), timeProvider));
+                LOGGER.debug("[Config Save] Done writing with lock");
+                return new EntityConfigSaveResult(updatingCommand.getEntityConfig(), new GoConfigHolder(preprocessedConfig, modifiedConfig));
+            } catch (Exception e) {
+                throw new RuntimeException("failed to save : " + e.getMessage());
+            }
+        } else {
+            throw new GoConfigValidationFailedException();
         }
     }
 

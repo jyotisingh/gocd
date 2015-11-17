@@ -177,7 +177,7 @@ public class AgentServiceTest {
         when(agentInstance.isBuilding()).thenReturn(false);
         when(agentInstance.isCancelled()).thenReturn(false);
 
-        doThrow(new RuntimeException()).when(agentConfigService).deleteAgents(agentInstance);
+        doThrow(new RuntimeException()).when(agentConfigService).deleteAgents(Username.ANONYMOUS, agentInstance);
 
         when(agentInstances.findAgent(uuid)).thenReturn(agentInstance);
 

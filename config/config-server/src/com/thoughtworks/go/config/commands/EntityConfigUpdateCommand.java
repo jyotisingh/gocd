@@ -14,26 +14,14 @@
  * limitations under the License.
  */
 
-package com.thoughtworks.go.config;
+package com.thoughtworks.go.config.commands;
 
-public class EntityConfigSaveResult<T> {
-    private T entityConfig;
-    private GoConfigHolder configHolder;
+import com.thoughtworks.go.config.CruiseConfig;
 
-    public EntityConfigSaveResult(T entityConfig, GoConfigHolder configHolder) {
-        this.entityConfig = entityConfig;
-        this.configHolder = configHolder;
-    }
+public interface EntityConfigUpdateCommand<T> extends CheckedUpdateCommand {
+    void update(CruiseConfig preprocessedConfig) throws Exception;
 
-    public T getEntityConfig() {
-        return entityConfig;
-    }
+    boolean isValid(CruiseConfig preprocessedConfig);
 
-    public GoConfigHolder getConfigHolder() {
-        return configHolder;
-    }
-
-    public ConfigSaveState getConfigSaveState() {
-        return ConfigSaveState.UPDATED;
-    }
+    T getEntityConfig();
 }

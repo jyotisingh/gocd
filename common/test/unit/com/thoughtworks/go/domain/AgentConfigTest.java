@@ -21,7 +21,9 @@ import com.thoughtworks.go.helper.GoConfigMother;
 import org.junit.Before;
 import org.junit.Test;
 
+import static com.thoughtworks.go.util.TestUtils.contains;
 import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.IsNull.nullValue;
 import static org.junit.Assert.assertThat;
 
 public class AgentConfigTest {
@@ -39,7 +41,7 @@ public class AgentConfigTest {
     @Test
     public void agentWithNoIpAddressShouldBeValid() throws Exception {
         CruiseConfig cruiseConfig = new BasicCruiseConfig();
-        AgentConfig agent = new AgentConfig();
+        AgentConfig agent = new AgentConfig("uuid", null, null);
         cruiseConfig.agents().add(agent);
 
         assertThat(cruiseConfig.validateAfterPreprocess().isEmpty(), is(true));
@@ -55,14 +57,41 @@ public class AgentConfigTest {
 
     @Test
     public void shouldDetectInvalidIPAddress() throws Exception {
-        shouldBeInvalid("blahinvalid", "IpAddress is invalid.");
-        shouldBeInvalid("blah.invalid", "IpAddress is invalid.");
-        shouldBeInvalid("399.0.0.1", "IpAddress is invalid.");
+        shouldBeInvalid("blahinvalid", "'blahinvalid' is an invalid IP address.");
+        shouldBeInvalid("blah.invalid", "'blah.invalid' is an invalid IP address.");
+        shouldBeInvalid("399.0.0.1", "'399.0.0.1' is an invalid IP address.");
     }
 
     @Test
     public void shouldInvalidateEmptyAddress() {
         shouldBeInvalid("", "IpAddress cannot be empty if it is present.");
+    }
+
+    @Test
+    public void shouldValidateTree(){
+        Resource resource = new Resource("junk%");
+        AgentConfig agentConfig = new AgentConfig("uuid", "junk", "junk", new Resources(resource));
+        boolean isValid = agentConfig.validateTree(ConfigSaveValidationContext.forChain(agentConfig));
+        assertThat(agentConfig.errors().on(AgentConfig.IP_ADDRESS), is("'junk' is an invalid IP address."));
+        assertThat(resource.errors().on(JobConfig.RESOURCES), contains("Resource name 'junk%' is not valid."));
+        assertThat(isValid, is(false));
+    }
+
+    @Test
+    public void shouldPassValidationWhenUUidIsAvailable(){
+        AgentConfig agentConfig = new AgentConfig("uuid");
+        agentConfig.validate(ConfigSaveValidationContext.forChain(agentConfig));
+        assertThat(agentConfig.errors().on(AgentConfig.UUID), is(nullValue()));
+    }
+
+    @Test
+    public void shouldFailValidationWhenUUidIsBlank(){
+        AgentConfig agentConfig = new AgentConfig("");
+        agentConfig.validate(ConfigSaveValidationContext.forChain(agentConfig));
+        assertThat(agentConfig.errors().on(AgentConfig.UUID), is("UUID cannot be empty"));
+        agentConfig = new AgentConfig(null);
+        agentConfig.validate(ConfigSaveValidationContext.forChain(agentConfig));
+        assertThat(agentConfig.errors().on(AgentConfig.UUID), is("UUID cannot be empty"));
     }
 
     private void shouldBeInvalid(String address, String errorMsg) {
@@ -78,7 +107,7 @@ public class AgentConfigTest {
         agentConfig.setIpAddress(ipAddress);
         cruiseConfig.agents().add(agentConfig);
         agentConfig.validate(ConfigSaveValidationContext.forChain(cruiseConfig));
-        assertThat(agentConfig.errors().isEmpty(), is(true));
+        assertThat(agentConfig.errors().on("ipAddress"), is(nullValue()));
     }
 
 }

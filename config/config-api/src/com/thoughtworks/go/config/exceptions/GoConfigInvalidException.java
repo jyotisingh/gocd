@@ -16,16 +16,23 @@
 
 package com.thoughtworks.go.config.exceptions;
 
-import java.util.List;
-
 import com.thoughtworks.go.config.CruiseConfig;
 import com.thoughtworks.go.domain.ConfigErrors;
+import com.thoughtworks.go.util.ListUtil;
+
+import java.util.List;
 
 public class GoConfigInvalidException extends RuntimeException {
     private final CruiseConfig cruiseConfig;
 
     public GoConfigInvalidException(CruiseConfig cruiseConfig, List<ConfigErrors> allErrors) {
-        super(allErrors.get(0).firstError());
+        super(ListUtil.join(ListUtil.map(allErrors, new ListUtil.Transformer<String>() {
+            @Override
+            public String transform(Object obj) {
+                ConfigErrors errors = (ConfigErrors) obj;
+                return ListUtil.join(errors.getAll());
+            }
+        })));
         this.cruiseConfig = cruiseConfig;
     }
 

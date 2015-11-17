@@ -18,6 +18,7 @@ package com.thoughtworks.go.server.service;
 
 import com.rits.cloning.Cloner;
 import com.thoughtworks.go.config.*;
+import com.thoughtworks.go.config.commands.EntityConfigUpdateCommand;
 import com.thoughtworks.go.config.exceptions.*;
 import com.thoughtworks.go.config.materials.MaterialConfigs;
 import com.thoughtworks.go.config.registry.ConfigElementImplementationRegistry;
@@ -145,7 +146,7 @@ public class GoConfigService implements Initializer {
         return canEditPipeline(pipelineName, username, result, findGroupNameByPipeline(new CaseInsensitiveString(pipelineName)));
     }
 
-    protected boolean canEditPipeline(String pipelineName, Username username, LocalizedOperationResult result, String groupName) {
+    public boolean canEditPipeline(String pipelineName, Username username, LocalizedOperationResult result, String groupName) {
         if (!doesPipelineExist(pipelineName, result)) {
             return false;
         }
@@ -242,13 +243,12 @@ public class GoConfigService implements Initializer {
         return getCurrentConfig().hasStageConfigNamed(new CaseInsensitiveString(pipelineName), new CaseInsensitiveString(stageName), true);
     }
 
-
-    public <T> void updateEntity(final T entity, final Username currentUser, final LocalizedOperationResult result, EntityConfigSaveCommand<T> saveCommand) {
-        goConfigDao.updateEntity(entity, result, currentUser, saveCommand);
-    }
-
     public ConfigSaveState updateConfig(UpdateConfigCommand command) {
         return goConfigDao.updateConfig(command);
+    }
+
+    public void updateConfig(EntityConfigUpdateCommand command, Username currentUser) {
+        goConfigDao.updateConfig(command, currentUser);
     }
 
     public long getUnresponsiveJobTerminationThreshold(JobIdentifier identifier) {

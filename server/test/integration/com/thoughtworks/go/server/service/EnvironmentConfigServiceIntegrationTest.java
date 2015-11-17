@@ -109,8 +109,8 @@ public class EnvironmentConfigServiceIntegrationTest {
         BasicEnvironmentConfig uat = environmentConfig("uat");
         goConfigService.addPipeline(PipelineConfigMother.createPipelineConfig("foo", "dev", "job"), "foo-grp");
         goConfigService.addPipeline(PipelineConfigMother.createPipelineConfig("bar", "dev", "job"), "foo-grp");
-        agentConfigService.addAgent(new AgentConfig("uuid-1", "host-1", "192.168.1.2"));
-        agentConfigService.addAgent(new AgentConfig("uuid-2", "host-2", "192.168.1.3"));
+        agentConfigService.addAgent(new AgentConfig("uuid-1", "host-1", "192.168.1.2"), Username.ANONYMOUS);
+        agentConfigService.addAgent(new AgentConfig("uuid-2", "host-2", "192.168.1.3"), Username.ANONYMOUS);
         uat.addPipeline(new CaseInsensitiveString("foo"));
         uat.addAgent("uuid-2");
         uat.addEnvironmentVariable("env-one", "ONE");

@@ -16,6 +16,7 @@
 
 package com.thoughtworks.go.config;
 
+import com.thoughtworks.go.config.commands.EntityConfigUpdateCommand;
 import com.thoughtworks.go.config.exceptions.GoConfigInvalidException;
 import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.config.validation.GoConfigValidity;
@@ -23,7 +24,6 @@ import com.thoughtworks.go.domain.ConfigErrors;
 import com.thoughtworks.go.listener.ConfigChangedListener;
 import com.thoughtworks.go.listener.EntityConfigChangedListener;
 import com.thoughtworks.go.server.domain.Username;
-import com.thoughtworks.go.server.service.EntityConfigSaveCommand;
 import com.thoughtworks.go.serverhealth.HealthStateType;
 import com.thoughtworks.go.serverhealth.ServerHealthService;
 import com.thoughtworks.go.serverhealth.ServerHealthState;
@@ -144,11 +144,10 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
     public synchronized ConfigSaveState writeWithLock(UpdateConfigCommand updateConfigCommand) {
         return this.fileService.writeWithLock(updateConfigCommand,new GoConfigHolder(this.currentConfig,this.currentConfigForEdit));
     }
-
-    @Override
-    public <T> void writeEntityWithLock(T pipelineConfig, EntityConfigSaveCommand<T> saveCommand, Username currentUser) {
-        EntityConfigSaveResult<T> saveResult = fileService.writeEntityWithLock(pipelineConfig, this.configHolder, saveCommand, currentUser);
-        saveValidConfigToCacheAndNotifyEntityConfigChangeListeners(saveResult);
+    public synchronized EntityConfigSaveResult writeEntityWithLock(EntityConfigUpdateCommand updateConfigCommand, Username currentUser) {
+        EntityConfigSaveResult entityConfigSaveResult = this.fileService.writeEntityWithLock(updateConfigCommand, new GoConfigHolder(this.currentConfig, this.currentConfigForEdit), currentUser);
+        saveValidConfigToCacheAndNotifyEntityConfigChangeListeners(entityConfigSaveResult);
+        return entityConfigSaveResult;
     }
 
     private <T> void saveValidConfigToCacheAndNotifyEntityConfigChangeListeners(EntityConfigSaveResult<T> saveResult) {

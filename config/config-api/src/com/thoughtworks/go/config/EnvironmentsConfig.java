@@ -49,10 +49,12 @@ public class EnvironmentsConfig extends BaseCollection<EnvironmentConfig> implem
         configErrors.add(fieldName, message);
     }
 
-    public void validateContainOnlyUuids(Set<String> uuids) {
+    public boolean validateContainOnlyUuids(Set<String> uuids) {
+        boolean isValid = true;
         for (EnvironmentConfig environmentConfig : this) {
-            environmentConfig.validateContainsOnlyUuids(uuids);
+            isValid = environmentConfig.validateContainsOnlyUuids(uuids) && isValid;
         }
+        return isValid;
     }
 
     public void validateContainOnlyPiplines(List<CaseInsensitiveString> pipelineNames) {
