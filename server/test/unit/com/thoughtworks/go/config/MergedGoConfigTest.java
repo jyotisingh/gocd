@@ -20,12 +20,14 @@ import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.domain.PipelineGroups;
 import com.thoughtworks.go.helper.PipelineConfigMother;
 import com.thoughtworks.go.listener.ConfigChangedListener;
+import com.thoughtworks.go.listener.EntityConfigChangedListener;
 import com.thoughtworks.go.server.domain.Username;
-import com.thoughtworks.go.server.service.PipelineConfigService;
+import com.thoughtworks.go.server.service.EntityConfigSaveCommand;
 import com.thoughtworks.go.server.util.ServerVersion;
 import com.thoughtworks.go.serverhealth.*;
 import com.thoughtworks.go.service.ConfigRepository;
 import com.thoughtworks.go.util.*;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -99,6 +101,42 @@ public class MergedGoConfigTest extends CachedGoConfigTestBase {
 
         // once during registerListener call, second when reloaded
         verify(listener, times(2)).onConfigChange(any(CruiseConfig.class));
+    }
+
+    @Test
+    public void shouldNotifyConcernedListenersWhenEntityChanges() {
+        final boolean[] pipelineConfigChangeListenerCalled = {false};
+        final boolean[] agentConfigChangeListenerCalled = {false};
+        final boolean[] cruiseConfigChangeListenerCalled = {false};
+        EntityConfigChangedListener<PipelineConfig> pipelineConfigChangeListener = new EntityConfigChangedListener<PipelineConfig>() {
+            @Override
+            public void onEntityConfigChange(PipelineConfig entity) {
+                pipelineConfigChangeListenerCalled[0] = true;
+            }
+        };
+        EntityConfigChangedListener<AgentConfig> agentConfigChangeListener = new EntityConfigChangedListener<AgentConfig>() {
+            @Override
+            public void onEntityConfigChange(AgentConfig entity) {
+                agentConfigChangeListenerCalled[0] = true;
+            }
+        };
+        EntityConfigChangedListener<CruiseConfig> cruiseConfigChangeListener = new EntityConfigChangedListener<CruiseConfig>() {
+            @Override
+            public void onEntityConfigChange(CruiseConfig entity) {
+                cruiseConfigChangeListenerCalled[0] = true;
+            }
+        };
+        cachedGoConfig.registerListener(pipelineConfigChangeListener);
+        cachedGoConfig.registerListener(agentConfigChangeListener);
+        cachedGoConfig.registerListener(cruiseConfigChangeListener);
+
+        PipelineConfig pipelineConfig = mock(PipelineConfig.class);
+        EntityConfigSaveCommand command = mock(EntityConfigSaveCommand.class);
+        when(command.isValid(any(CruiseConfig.class), any(PipelineConfig.class))).thenReturn(true);
+        cachedGoConfig.writeEntityWithLock(pipelineConfig, command, new Username(new CaseInsensitiveString("user")));
+        Assert.assertThat(pipelineConfigChangeListenerCalled[0], is(true));
+        Assert.assertThat(agentConfigChangeListenerCalled[0], is(false));
+        Assert.assertThat(cruiseConfigChangeListenerCalled[0], is(false));
     }
 
     @Test
@@ -264,20 +302,20 @@ public class MergedGoConfigTest extends CachedGoConfigTestBase {
     @Test
     public void shouldDelegateWritePipelineConfigCallToFileService(){
         CachedFileGoConfig fileService = mock(CachedFileGoConfig.class);
-        PipelineConfigService.SaveCommand saveCommand = mock(PipelineConfigService.SaveCommand.class);
+        EntityConfigSaveCommand saveCommand = mock(EntityConfigSaveCommand.class);
         MergedGoConfig mergedGoConfig = new MergedGoConfig(mock(ServerHealthService.class), fileService, mock(GoPartialConfig.class));
         PipelineConfig pipelineConfig = new PipelineConfig();
-        CachedFileGoConfig.PipelineConfigSaveResult saveResult = mock(CachedFileGoConfig.PipelineConfigSaveResult.class);
+        EntityConfigSaveResult<PipelineConfig> saveResult = mock(EntityConfigSaveResult.class);
         GoConfigHolder savedConfig = new GoConfigHolder(new BasicCruiseConfig(), new BasicCruiseConfig());
         when(saveResult.getConfigHolder()).thenReturn(savedConfig);
         GoConfigHolder holderBeforeUpdate = mergedGoConfig.loadConfigHolder();
         Username user = new Username(new CaseInsensitiveString("user"));
-        when(fileService.writePipelineWithLock(pipelineConfig, holderBeforeUpdate, saveCommand, user)).thenReturn(saveResult);
+        when(fileService.writeEntityWithLock(pipelineConfig, holderBeforeUpdate, saveCommand, user)).thenReturn(saveResult);
 
-        mergedGoConfig.writePipelineWithLock(pipelineConfig, saveCommand, user);
+        mergedGoConfig.writeEntityWithLock(pipelineConfig, saveCommand, user);
         assertThat(mergedGoConfig.loadConfigHolder(), is(savedConfig));
         assertThat(mergedGoConfig.currentConfig(), is(savedConfig.config));
         assertThat(mergedGoConfig.loadForEditing(), is(savedConfig.configForEdit));
-        verify(fileService).writePipelineWithLock(pipelineConfig, holderBeforeUpdate, saveCommand, user);
+        verify(fileService).writeEntityWithLock(pipelineConfig, holderBeforeUpdate, saveCommand, user);
     }
 }

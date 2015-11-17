@@ -21,9 +21,9 @@ import java.util.List;
 
 import com.thoughtworks.go.config.validation.GoConfigValidity;
 import com.thoughtworks.go.listener.ConfigChangedListener;
-import com.thoughtworks.go.listener.PipelineConfigChangedListener;
+import com.thoughtworks.go.listener.EntityConfigChangedListener;
 import com.thoughtworks.go.server.domain.Username;
-import com.thoughtworks.go.server.service.PipelineConfigService;
+import com.thoughtworks.go.server.service.EntityConfigSaveCommand;
 import com.thoughtworks.go.serverhealth.HealthStateType;
 import com.thoughtworks.go.serverhealth.ServerHealthService;
 import com.thoughtworks.go.serverhealth.ServerHealthState;
@@ -105,30 +105,6 @@ public class CachedFileGoConfig implements CachedGoConfig {
         }
     }
 
-    static class PipelineConfigSaveResult {
-        private PipelineConfig pipelineConfig;
-        private String group;
-        private GoConfigHolder configHolder;
-
-        public PipelineConfigSaveResult(PipelineConfig pipelineConfig, String group, GoConfigHolder configHolder) {
-            this.pipelineConfig = pipelineConfig;
-            this.group = group;
-            this.configHolder = configHolder;
-        }
-
-        public PipelineConfig getPipelineConfig() {
-            return pipelineConfig;
-        }
-
-        public String getGroup() {
-            return group;
-        }
-
-        public GoConfigHolder getConfigHolder() {
-            return configHolder;
-        }
-    }
-
     @Override
     public synchronized ConfigSaveState writeWithLock(UpdateConfigCommand updateConfigCommand) {
         GoConfigHolder holder = new GoConfigHolder(currentConfig, currentConfigForEdit);
@@ -141,25 +117,25 @@ public class CachedFileGoConfig implements CachedGoConfig {
         return saveResult.getConfigSaveState();
     }
 
-    public synchronized void writePipelineWithLock(PipelineConfig pipelineConfig, PipelineConfigService.SaveCommand saveCommand, Username currentUser) {
+    public synchronized <T> void writeEntityWithLock(T pipelineConfig, EntityConfigSaveCommand<T> saveCommand, Username currentUser) {
         GoConfigHolder serverCopy = new GoConfigHolder(currentConfig, currentConfigForEdit);
-        writePipelineWithLock(pipelineConfig, serverCopy, saveCommand, currentUser);
+        writeEntityWithLock(pipelineConfig, serverCopy, saveCommand, currentUser);
     }
 
-    public synchronized PipelineConfigSaveResult writePipelineWithLock(PipelineConfig pipelineConfig, GoConfigHolder serverCopy, PipelineConfigService.SaveCommand saveCommand, Username currentUser) {
-        PipelineConfigSaveResult saveResult = dataSource.writePipelineWithLock(pipelineConfig, serverCopy, saveCommand, currentUser);
-        saveValidConfigToCacheAndNotifyPipelineConfigChangeListeners(saveResult);
+    public synchronized <T> EntityConfigSaveResult writeEntityWithLock(T pipelineConfig, GoConfigHolder serverCopy, EntityConfigSaveCommand<T> saveCommand, Username currentUser) {
+        EntityConfigSaveResult saveResult = dataSource.writeEntityWithLock(pipelineConfig, serverCopy, saveCommand, currentUser);
+        saveValidConfigToCacheAndNotifyEntityConfigChangeListeners(saveResult);
         return saveResult;
     }
 
-    private void saveValidConfigToCacheAndNotifyPipelineConfigChangeListeners(CachedFileGoConfig.PipelineConfigSaveResult saveResult) {
+    private <T> void saveValidConfigToCacheAndNotifyEntityConfigChangeListeners(EntityConfigSaveResult<T> saveResult) {
         saveValidConfigToCache(saveResult.getConfigHolder());
         LOGGER.info("About to notify pipeline config listeners");
 
         for (ConfigChangedListener listener : listeners) {
-            if(listener instanceof PipelineConfigChangedListener){
+            if(listener instanceof EntityConfigChangedListener<?> && ((EntityConfigChangedListener) listener).shouldCareAbout(saveResult.getEntityConfig())){
                 try {
-                    ((PipelineConfigChangedListener) listener).onPipelineConfigChange(saveResult.getPipelineConfig(), saveResult.getGroup());
+                    ((EntityConfigChangedListener<T>) listener).onEntityConfigChange(saveResult.getEntityConfig());
                 } catch (Exception e) {
                     LOGGER.error("failed to fire config changed event for listener: " + listener, e);
                 }

@@ -21,9 +21,9 @@ import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.config.validation.GoConfigValidity;
 import com.thoughtworks.go.domain.ConfigErrors;
 import com.thoughtworks.go.listener.ConfigChangedListener;
-import com.thoughtworks.go.listener.PipelineConfigChangedListener;
+import com.thoughtworks.go.listener.EntityConfigChangedListener;
 import com.thoughtworks.go.server.domain.Username;
-import com.thoughtworks.go.server.service.PipelineConfigService;
+import com.thoughtworks.go.server.service.EntityConfigSaveCommand;
 import com.thoughtworks.go.serverhealth.HealthStateType;
 import com.thoughtworks.go.serverhealth.ServerHealthService;
 import com.thoughtworks.go.serverhealth.ServerHealthState;
@@ -146,19 +146,19 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
     }
 
     @Override
-    public synchronized void writePipelineWithLock(PipelineConfig pipelineConfig, PipelineConfigService.SaveCommand saveCommand, Username currentUser) {
-        CachedFileGoConfig.PipelineConfigSaveResult saveResult = fileService.writePipelineWithLock(pipelineConfig, this.configHolder, saveCommand, currentUser);
-        saveValidConfigToCacheAndNotifyPipelineConfigChangeListeners(saveResult);
+    public <T> void writeEntityWithLock(T pipelineConfig, EntityConfigSaveCommand<T> saveCommand, Username currentUser) {
+        EntityConfigSaveResult<T> saveResult = fileService.writeEntityWithLock(pipelineConfig, this.configHolder, saveCommand, currentUser);
+        saveValidConfigToCacheAndNotifyEntityConfigChangeListeners(saveResult);
     }
 
-    private void saveValidConfigToCacheAndNotifyPipelineConfigChangeListeners(CachedFileGoConfig.PipelineConfigSaveResult saveResult) {
+    private <T> void saveValidConfigToCacheAndNotifyEntityConfigChangeListeners(EntityConfigSaveResult<T> saveResult) {
         saveValidConfigToCache(saveResult.getConfigHolder());
         LOGGER.info("About to notify pipeline config listeners");
 
         for (ConfigChangedListener listener : listeners) {
-            if(listener instanceof PipelineConfigChangedListener){
+            if(listener instanceof EntityConfigChangedListener<?> && ((EntityConfigChangedListener) listener).shouldCareAbout(saveResult.getEntityConfig())){
                 try {
-                    ((PipelineConfigChangedListener) listener).onPipelineConfigChange(saveResult.getPipelineConfig(), saveResult.getGroup());
+                    ((EntityConfigChangedListener<T>) listener).onEntityConfigChange(saveResult.getEntityConfig());
                 } catch (Exception e) {
                     LOGGER.error("failed to fire config changed event for listener: " + listener, e);
                 }

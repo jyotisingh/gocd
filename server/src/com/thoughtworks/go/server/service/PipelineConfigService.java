@@ -18,7 +18,7 @@ package com.thoughtworks.go.server.service;
 
 import com.thoughtworks.go.config.*;
 import com.thoughtworks.go.i18n.LocalizedMessage;
-import com.thoughtworks.go.listener.PipelineConfigChangedListener;
+import com.thoughtworks.go.listener.*;
 import com.thoughtworks.go.server.cache.GoCache;
 import com.thoughtworks.go.server.domain.Username;
 import com.thoughtworks.go.server.initializers.Initializer;
@@ -39,7 +39,7 @@ import java.util.Map;
  * @understands providing services around a pipeline configuration
  */
 @Service
-public class PipelineConfigService implements PipelineConfigChangedListener, Initializer {
+public class PipelineConfigService implements ConfigChangedListener, Initializer {
     private final GoConfigService goConfigService;
     private static final String GO_PIPELINE_CONFIGS_ETAGS_CACHE = "GO_PIPELINE_CONFIGS_ETAGS_CACHE".intern();
     private GoCache goCache;
@@ -53,6 +53,19 @@ public class PipelineConfigService implements PipelineConfigChangedListener, Ini
 
     public void initialize() {
         goConfigService.register(this);
+        goConfigService.register(pipelineConfigChangedListener());
+    }
+
+    private EntityConfigChangedListener<PipelineConfig> pipelineConfigChangedListener() {
+        return new EntityConfigChangedListener<PipelineConfig>() {
+            @Override
+            public void onEntityConfigChange(PipelineConfig pipelineConfig) {
+                PipelineConfigurationCache.getInstance().onPipelineConfigChange(pipelineConfig);
+                if (goCache.get(GO_PIPELINE_CONFIGS_ETAGS_CACHE, pipelineConfig.name().toLower()) != null) {
+                    goCache.remove(GO_PIPELINE_CONFIGS_ETAGS_CACHE, pipelineConfig.name().toLower());
+                }
+            }
+        };
     }
 
     public Map<CaseInsensitiveString, CanDeleteResult> canDeletePipelines() {
@@ -96,7 +109,7 @@ public class PipelineConfigService implements PipelineConfigChangedListener, Ini
 
     public void updatePipelineConfig(final Username currentUser, final PipelineConfig pipelineConfig, final LocalizedOperationResult result) {
         try {
-            goConfigService.updatePipeline(pipelineConfig, currentUser, result, new SaveCommand<PipelineConfig>() {
+            goConfigService.updateEntity(pipelineConfig, currentUser, result, new EntityConfigSaveCommand<PipelineConfig>() {
                 public String group;
 
                 @Override
@@ -111,9 +124,8 @@ public class PipelineConfigService implements PipelineConfigChangedListener, Ini
                     return goConfigService.canEditPipeline(pipelineConfig.name().toString(), currentUser, result, getPipelineGroup());
                 }
 
-                @Override
-                public String getPipelineGroup() {
-                    if(group == null){
+                private String getPipelineGroup() {
+                    if (group == null) {
                         this.group = goConfigService.findGroupNameByPipeline(pipelineConfig.name());
                     }
                     return group;
@@ -122,6 +134,16 @@ public class PipelineConfigService implements PipelineConfigChangedListener, Ini
                 @Override
                 public void updateConfig(CruiseConfig configForEdit, PipelineConfig pipelineConfig) {
                     configForEdit.update(getPipelineGroup(), pipelineConfig.name().toString(), pipelineConfig);
+                }
+
+                @Override
+                public PipelineConfig findMatchingEntityIn(CruiseConfig preprocessedConfig) {
+                    return preprocessedConfig.getPipelineConfigByName(pipelineConfig.name());
+                }
+
+                @Override
+                public String getId() {
+                    return CaseInsensitiveString.str(pipelineConfig.name());
                 }
 
             });
@@ -133,7 +155,7 @@ public class PipelineConfigService implements PipelineConfigChangedListener, Ini
 
     public void createPipelineConfig(final Username currentUser, final PipelineConfig pipelineConfig, final HttpLocalizedOperationResult result, final String groupName) {
         try {
-            goConfigService.updatePipeline(pipelineConfig, currentUser, result, new SaveCommand<PipelineConfig>() {
+            goConfigService.updateEntity(pipelineConfig, currentUser, result, new EntityConfigSaveCommand<PipelineConfig>() {
                 @Override
                 public boolean isValid(CruiseConfig preprocessedConfig, PipelineConfig preprocessedPipelineConfig) {
                     boolean isValid = preprocessedPipelineConfig.validateTree(PipelineConfigSaveValidationContext.forChain(true, groupName, preprocessedConfig, preprocessedPipelineConfig));
@@ -151,34 +173,23 @@ public class PipelineConfigService implements PipelineConfigChangedListener, Ini
                 }
 
                 @Override
-                public String getPipelineGroup() {
-                    return groupName;
+                public void updateConfig(CruiseConfig configForEdit, PipelineConfig pipelineConfig) {
+                    configForEdit.addPipelineWithoutValidation(groupName, pipelineConfig);
                 }
 
                 @Override
-                public void updateConfig(CruiseConfig configForEdit, PipelineConfig pipelineConfig) {
-                    configForEdit.addPipelineWithoutValidation(groupName, pipelineConfig);
+                public PipelineConfig findMatchingEntityIn(CruiseConfig preprocessedConfig) {
+                    return preprocessedConfig.getPipelineConfigByName(pipelineConfig.name());
+                }
+
+                @Override
+                public String getId() {
+                    return CaseInsensitiveString.str(pipelineConfig.name());
                 }
             });
         } catch (Exception e) {
             LOGGER.error(e.getMessage(), e);
             result.internalServerError(LocalizedMessage.string("SAVE_FAILED_WITH_REASON", e.getMessage()));
-        }
-    }
-
-    public interface SaveCommand<T extends Validatable>{
-        boolean isValid(CruiseConfig modifiedConfig, T object);
-        boolean hasWritePermissions();
-        String getPipelineGroup();
-        void updateConfig(CruiseConfig configForEdit, T configItemBeingSaved);
-    }
-
-
-    @Override
-    public void onPipelineConfigChange(PipelineConfig pipelineConfig, String group) {
-        PipelineConfigurationCache.getInstance().onPipelineConfigChange(pipelineConfig);
-        if (goCache.get(GO_PIPELINE_CONFIGS_ETAGS_CACHE, pipelineConfig.name().toLower()) != null) {
-            goCache.remove(GO_PIPELINE_CONFIGS_ETAGS_CACHE, pipelineConfig.name().toLower());
         }
     }
 

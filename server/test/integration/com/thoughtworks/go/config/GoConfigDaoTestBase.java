@@ -27,7 +27,7 @@ import com.thoughtworks.go.helper.PipelineMother;
 import com.thoughtworks.go.helper.StageConfigMother;
 import com.thoughtworks.go.i18n.Localizable;
 import com.thoughtworks.go.server.domain.Username;
-import com.thoughtworks.go.server.service.PipelineConfigService;
+import com.thoughtworks.go.server.service.EntityConfigSaveCommand;
 import com.thoughtworks.go.server.service.result.LocalizedOperationResult;
 import com.thoughtworks.go.util.*;
 import org.apache.commons.io.FileUtils;
@@ -567,12 +567,12 @@ public abstract class GoConfigDaoTestBase {
     public void shouldNotUpdatePipelineConfigIfUserDoesNotHaveRequiredPermissionsToDoSo(){
         PipelineConfig pipelineConfig = mock(PipelineConfig.class);
         LocalizedOperationResult result = mock(LocalizedOperationResult.class);
-        PipelineConfigService.SaveCommand saveCommand = mock(PipelineConfigService.SaveCommand.class);
+        EntityConfigSaveCommand saveCommand = mock(EntityConfigSaveCommand.class);
         when(saveCommand.hasWritePermissions()).thenReturn(false);
 
         CachedGoConfig cachedConfigService = mock(CachedGoConfig.class);
         goConfigDao = new GoConfigDao(cachedConfigService, null);
-        goConfigDao.updatePipeline(pipelineConfig, result, new Username(new CaseInsensitiveString("user")), saveCommand);
+        goConfigDao.updateEntity(pipelineConfig, result, new Username(new CaseInsensitiveString("user")), saveCommand);
 
         verifyZeroInteractions(cachedConfigService);
     }
@@ -582,32 +582,31 @@ public abstract class GoConfigDaoTestBase {
         Username username = new Username(new CaseInsensitiveString("user"));
         PipelineConfig pipelineConfig = mock(PipelineConfig.class);
         LocalizedOperationResult result = mock(LocalizedOperationResult.class);
-        PipelineConfigService.SaveCommand saveCommand = mock(PipelineConfigService.SaveCommand.class);
+        EntityConfigSaveCommand saveCommand = mock(EntityConfigSaveCommand.class);
         when(saveCommand.hasWritePermissions()).thenReturn(true);
 
         CachedGoConfig cachedConfigService = mock(CachedGoConfig.class);
-        doThrow(new ConfigUpdateCheckFailedException()).when(cachedConfigService).writePipelineWithLock(pipelineConfig, saveCommand, username);
+        doThrow(new ConfigUpdateCheckFailedException()).when(cachedConfigService).writeEntityWithLock(pipelineConfig, saveCommand, username);
         goConfigDao = new GoConfigDao(cachedConfigService, null);
-        goConfigDao.updatePipeline(pipelineConfig, result, username, saveCommand);
+        goConfigDao.updateEntity(pipelineConfig, result, username, saveCommand);
 
         verify(result).unprocessableEntity(Matchers.<Localizable>any());
     }
-
 
     @Test
     public void shouldUpdateValidPipelineConfig(){
         PipelineConfig pipelineConfig = mock(PipelineConfig.class);
         LocalizedOperationResult result = mock(LocalizedOperationResult.class);
-        PipelineConfigService.SaveCommand saveCommand = mock(PipelineConfigService.SaveCommand.class);
+        EntityConfigSaveCommand saveCommand = mock(EntityConfigSaveCommand.class);
         when(saveCommand.hasWritePermissions()).thenReturn(true);
 
         CachedGoConfig cachedConfigService = mock(CachedGoConfig.class);
         goConfigDao = new GoConfigDao(cachedConfigService, null);
         Username currentUser = new Username(new CaseInsensitiveString("user"));
-        goConfigDao.updatePipeline(pipelineConfig, result, currentUser, saveCommand);
+        goConfigDao.updateEntity(pipelineConfig, result, currentUser, saveCommand);
 
         verifyZeroInteractions(result);
-        verify(cachedConfigService).writePipelineWithLock(pipelineConfig, saveCommand, currentUser);
+        verify(cachedConfigService).writeEntityWithLock(pipelineConfig, saveCommand, currentUser);
     }
 
     private void assertCurrentConfigIs(CruiseConfig cruiseConfig) throws Exception {

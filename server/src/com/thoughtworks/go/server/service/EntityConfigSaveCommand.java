@@ -14,10 +14,19 @@
  * limitations under the License.
  */
 
-package com.thoughtworks.go.listener;
+package com.thoughtworks.go.server.service;
 
-import com.thoughtworks.go.config.PipelineConfig;
+import com.thoughtworks.go.config.CruiseConfig;
+import com.thoughtworks.go.config.Validatable;
 
-public interface PipelineConfigChangedListener extends  ConfigChangedListener{
-    void onPipelineConfigChange(PipelineConfig pipelineConfig, String group);
+public interface EntityConfigSaveCommand<T> {
+    boolean isValid(CruiseConfig modifiedConfig, T object);
+
+    boolean hasWritePermissions();
+
+    void updateConfig(CruiseConfig configForEdit, T configItemBeingSaved);
+
+    T findMatchingEntityIn(CruiseConfig preprocessedConfig);
+
+    String getId();
 }

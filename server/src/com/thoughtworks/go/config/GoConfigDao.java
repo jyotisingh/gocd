@@ -27,7 +27,7 @@ import com.thoughtworks.go.metrics.domain.probes.ProbeType;
 import com.thoughtworks.go.metrics.service.MetricsProbeService;
 import com.thoughtworks.go.presentation.TriStateSelection;
 import com.thoughtworks.go.server.domain.Username;
-import com.thoughtworks.go.server.service.PipelineConfigService;
+import com.thoughtworks.go.server.service.EntityConfigSaveCommand;
 import com.thoughtworks.go.server.service.result.LocalizedOperationResult;
 import com.thoughtworks.go.util.ExceptionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -173,13 +173,13 @@ public class GoConfigDao {
         return cachedConfigService.currentConfig().getMd5();
     }
 
-    public void updatePipeline(PipelineConfig pipelineConfig, LocalizedOperationResult result, Username currentUser, PipelineConfigService.SaveCommand saveCommand) {
+    public <T> void updateEntity(T entity, LocalizedOperationResult result, Username currentUser, EntityConfigSaveCommand<T> saveCommand) {
         synchronized (writeLock) {
             if (saveCommand.hasWritePermissions()) {
                 try {
-                    cachedConfigService.writePipelineWithLock(pipelineConfig, saveCommand, currentUser);
+                    cachedConfigService.writeEntityWithLock(entity, saveCommand, currentUser);
                 } catch (ConfigUpdateCheckFailedException e) {
-                    result.unprocessableEntity(LocalizedMessage.string("PIPELINE_CONFIG_VALIDATION_FAILED", pipelineConfig.name()));
+                    result.unprocessableEntity(LocalizedMessage.string("ENTITY_CONFIG_VALIDATION_FAILED", entity.getClass().getAnnotation(ConfigTag.class), saveCommand.getId()));
                 }
             }
         }

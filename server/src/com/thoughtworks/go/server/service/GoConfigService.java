@@ -249,8 +249,8 @@ public class GoConfigService implements Initializer {
         goConfigDao.addAgent(agentConfig);
     }
 
-    public void updatePipeline(final PipelineConfig pipelineConfig, final Username currentUser, final LocalizedOperationResult result, PipelineConfigService.SaveCommand saveCommand) {
-        goConfigDao.updatePipeline(pipelineConfig, result, currentUser, saveCommand);
+    public <T> void updateEntity(final T entity, final Username currentUser, final LocalizedOperationResult result, EntityConfigSaveCommand<T> saveCommand) {
+        goConfigDao.updateEntity(entity, result, currentUser, saveCommand);
     }
 
     public ConfigSaveState updateConfig(UpdateConfigCommand command) {

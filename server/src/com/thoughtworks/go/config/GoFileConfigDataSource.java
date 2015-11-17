@@ -23,7 +23,7 @@ import com.thoughtworks.go.config.update.ConfigUpdateCheckFailedException;
 import com.thoughtworks.go.domain.GoConfigRevision;
 import com.thoughtworks.go.metrics.service.MetricsProbeService;
 import com.thoughtworks.go.server.domain.Username;
-import com.thoughtworks.go.server.service.PipelineConfigService;
+import com.thoughtworks.go.server.service.EntityConfigSaveCommand;
 import com.thoughtworks.go.server.util.ServerVersion;
 import com.thoughtworks.go.serverhealth.HealthStateScope;
 import com.thoughtworks.go.serverhealth.HealthStateType;
@@ -211,20 +211,20 @@ public class GoFileConfigDataSource {
         }
     }
 
-    public synchronized CachedFileGoConfig.PipelineConfigSaveResult writePipelineWithLock(PipelineConfig pipelineConfig, GoConfigHolder serverCopy, PipelineConfigService.SaveCommand saveCommand, Username currentUser) {
+    public synchronized <T> EntityConfigSaveResult writeEntityWithLock(T entityConfig, GoConfigHolder serverCopy, EntityConfigSaveCommand saveCommand, Username currentUser) {
         CruiseConfig modifiedConfig = cloner.deepClone(serverCopy.configForEdit);
-        saveCommand.updateConfig(modifiedConfig, pipelineConfig);
+        saveCommand.updateConfig(modifiedConfig, entityConfig);
         CruiseConfig preprocessedConfig = cloner.deepClone(modifiedConfig);
         MagicalGoConfigXmlLoader.preprocess(preprocessedConfig);
-        PipelineConfig preprocessedPipelineConfig = preprocessedConfig.getPipelineConfigByName(pipelineConfig.name());
-        if (saveCommand.isValid(preprocessedConfig, preprocessedPipelineConfig)) {
+        T preprocessedEntity = (T) saveCommand.findMatchingEntityIn(preprocessedConfig);
+        if (saveCommand.isValid(preprocessedConfig, preprocessedEntity)) {
             try {
                 LOGGER.info(String.format("[Configuration Changed] Saving updated configuration."));
                 String configAsXml = configAsXml(modifiedConfig, true);
                 writeToConfigXmlFile(configAsXml);
                 configRepository.checkin(new GoConfigRevision(configAsXml, CachedDigestUtils.md5Hex(configAsXml), currentUser.getUsername().toString(), serverVersion.version(), timeProvider));
                 LOGGER.debug("[Config Save] Done writing with lock");
-                return new CachedFileGoConfig.PipelineConfigSaveResult(pipelineConfig, saveCommand.getPipelineGroup(), new GoConfigHolder(preprocessedConfig, modifiedConfig));
+                return new EntityConfigSaveResult(entityConfig, new GoConfigHolder(preprocessedConfig, modifiedConfig));
             } catch (Exception e) {
                 throw new RuntimeException("failed to save : " + e.getMessage());
             }
