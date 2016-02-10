@@ -15,26 +15,12 @@
  *************************GO-LICENSE-END***********************************/
 package com.thoughtworks.go.config;
 
-import com.thoughtworks.go.config.materials.git.GitMaterial;
 import com.thoughtworks.go.config.materials.git.GitMaterialConfig;
 import com.thoughtworks.go.config.remote.ConfigRepoConfig;
 import com.thoughtworks.go.config.remote.ConfigReposConfig;
-import com.thoughtworks.go.domain.materials.Material;
-import com.thoughtworks.go.helper.NoOpMetricsProbeService;
-import com.thoughtworks.go.listener.ConfigChangedListener;
-import com.thoughtworks.go.metrics.service.MetricsProbeService;
-import com.thoughtworks.go.server.util.ServerVersion;
-import com.thoughtworks.go.serverhealth.ServerHealthService;
-import com.thoughtworks.go.service.ConfigRepository;
-import com.thoughtworks.go.util.ConfigElementImplementationRegistryMother;
-import com.thoughtworks.go.util.GoConfigFileHelper;
-import com.thoughtworks.go.util.SystemEnvironment;
-import com.thoughtworks.go.util.TimeProvider;
-import org.hamcrest.core.Is;
 import org.junit.Before;
 import org.junit.Test;
 
-import static com.thoughtworks.go.helper.ConfigFileFixture.CONFIG;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;

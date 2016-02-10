@@ -1,34 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <cruise xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="cruise-config.xsd" schemaVersion="78">
-  <server artifactsdir="logs" commandRepositoryLocation="default" serverId="dev-id">
-    <security>
-      <passwordFile path="../manual-testing/ant_hg/password.properties" />
-      <roles>
-        <role name="xyz" />
-      </roles>
-      <admins>
-        <user>admin</user>
-      </admins>
-    </security>
-  </server>
-  <pipelines group="first">
-    <authorization>
-      <view>
-        <user>operate</user>
-      </view>
-      <admins>
-        <user>operate</user>
-      </admins>
-    </authorization>
+  <server artifactsdir="artifactsDir" commandRepositoryLocation="default" serverId="572e0973-f790-4c90-8380-56baec7dd517" />
+  <config-repos>
+    <config-repo>
+      <git url="/tmp/gocd-indep-config-part/" dest="foo" />
+    </config-repo>
+  </config-repos>
+  <pipelines group="defaultGroup">
     <pipeline name="up42">
       <materials>
-        <hg url="../manual-testing/ant_hg/dummy" dest="dest_dir" materialName="dummyhg" />
+        <git url="https://github.com/jyotisingh/junk.git" />
       </materials>
       <stage name="up42_stage">
         <jobs>
-          <job name="up42_job">
+          <job name="defaultJob">
             <tasks>
-              <exec command="ls" />
+              <ant />
+            </tasks>
+          </job>
+        </jobs>
+      </stage>
+    </pipeline>
+    <pipeline name="down">
+      <materials>
+        <pipeline pipelineName="up42" stageName="up42_stage" />
+      </materials>
+      <stage name="defaultStage">
+        <jobs>
+          <job name="defaultJob">
+            <tasks>
+              <ant />
             </tasks>
           </job>
         </jobs>
