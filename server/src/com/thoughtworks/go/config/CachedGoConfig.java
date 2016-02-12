@@ -17,11 +17,14 @@
 package com.thoughtworks.go.config;
 
 import com.thoughtworks.go.config.validation.GoConfigValidity;
+import com.thoughtworks.go.listener.AsyncConfigChangedListener;
 import com.thoughtworks.go.listener.ConfigChangedListener;
 import com.thoughtworks.go.server.domain.Username;
 import com.thoughtworks.go.server.service.PipelineConfigService;
 
 public interface CachedGoConfig {
+    void notifyAsyncListeners();
+
     CruiseConfig loadForEditing();
 
     CruiseConfig currentConfig();
@@ -41,6 +44,8 @@ public interface CachedGoConfig {
     GoConfigValidity checkConfigFileValid();
 
     void registerListener(ConfigChangedListener listener);
+
+    void registerAsyncListener(AsyncConfigChangedListener listener);
 
     void clearListeners();
 

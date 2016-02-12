@@ -61,7 +61,7 @@ public class GoPartialConfigTest {
 
         repoConfigDataSource = new GoRepoConfigDataSource(configWatchList,configPluginService);
 
-        partialConfig = new GoPartialConfig(repoConfigDataSource,configWatchList, mock(MergedGoConfig.class), mock(GoConfigService.class));
+        partialConfig = new GoPartialConfig(repoConfigDataSource,configWatchList, mock(MergedGoConfig.class), mock(GoConfigService.class), mock(CachedGoPartials.class));
     }
 
     @Test

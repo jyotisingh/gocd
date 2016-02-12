@@ -78,7 +78,7 @@ public class MergedGoConfigTest extends CachedGoConfigTestBase {
 
         repoConfigDataSource = new GoRepoConfigDataSource(configWatchList,configPluginService);
 
-        partials = new GoPartialConfig(repoConfigDataSource,configWatchList, mock(MergedGoConfig.class), mock(GoConfigService.class));
+        partials = new GoPartialConfig(repoConfigDataSource,configWatchList, mock(MergedGoConfig.class), mock(GoConfigService.class), mock(CachedGoPartials.class));
 
         cachedGoConfig = new MergedGoConfig(serverHealthService,cachedFileGoConfig, dataSource);
         configHelper.usingCruiseConfigDao(new GoConfigDao(cachedFileGoConfig));

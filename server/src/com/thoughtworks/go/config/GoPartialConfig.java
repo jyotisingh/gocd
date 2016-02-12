@@ -17,31 +17,27 @@
  ***********************************/
 package com.thoughtworks.go.config;
 
-import com.thoughtworks.go.config.exceptions.GoConfigInvalidException;
+import com.rits.cloning.Cloner;
 import com.thoughtworks.go.config.remote.ConfigRepoConfig;
 import com.thoughtworks.go.config.remote.ConfigReposConfig;
 import com.thoughtworks.go.config.remote.PartialConfig;
-import com.thoughtworks.go.domain.ConfigErrors;
+import com.thoughtworks.go.listener.AsyncConfigChangedListener;
 import com.thoughtworks.go.server.service.GoConfigService;
 import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static java.lang.String.format;
 
 /**
  * @understands current state of configuration part.
- *
+ * <p/>
  * Provides partial configurations.
  */
 @Component
-public class GoPartialConfig implements PartialConfigUpdateCompletedListener, ChangedRepoConfigWatchListListener, PartialsProvider {
+public class GoPartialConfig implements PartialConfigUpdateCompletedListener, ChangedRepoConfigWatchListListener, PartialsProvider, AsyncConfigChangedListener {
 
     private static final Logger LOGGER = Logger.getLogger(GoPartialConfig.class);
 
@@ -49,21 +45,22 @@ public class GoPartialConfig implements PartialConfigUpdateCompletedListener, Ch
     private GoConfigWatchList configWatchList;
     private final MergedGoConfig mergedGoConfig;
     private final GoConfigService goConfigService;
+    private final CachedGoPartials cachedGoPartials;
 
     private List<PartialConfigChangedListener> listeners = new ArrayList<PartialConfigChangedListener>();
-    // last, ready partial configs
-    private Map<String, PartialConfig> fingerprintToLatestValidConfigMap = new ConcurrentHashMap<String, PartialConfig>();
 
     @Autowired
     public GoPartialConfig(GoRepoConfigDataSource repoConfigDataSource,
-                           GoConfigWatchList configWatchList, MergedGoConfig mergedGoConfig, GoConfigService goConfigService) {
+                           GoConfigWatchList configWatchList, MergedGoConfig mergedGoConfig, GoConfigService goConfigService, CachedGoPartials cachedGoPartials) {
         this.repoConfigDataSource = repoConfigDataSource;
         this.configWatchList = configWatchList;
         this.mergedGoConfig = mergedGoConfig;
         this.goConfigService = goConfigService;
+        this.cachedGoPartials = cachedGoPartials;
 
         this.configWatchList.registerListener(this);
         this.repoConfigDataSource.registerListener(this);
+        this.mergedGoConfig.registerAsyncListener(this);
     }
 
     public void registerListener(PartialConfigChangedListener listener) {
@@ -74,23 +71,22 @@ public class GoPartialConfig implements PartialConfigUpdateCompletedListener, Ch
         return this.listeners.contains(listener);
     }
 
-
-    private void notifyListeners() {
-        try {
-            goConfigService.updateConfig(new UpdateConfigCommand() {
-                @Override
-                public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
-                    return cruiseConfig;
-                }
-            });
-        } catch (Exception e) {
-            mergedGoConfig.saveConfigError(e);
-        }
-    }
+//    private void notifyListeners() {
+//        try {
+//            goConfigService.updateConfig(new UpdateConfigCommand() {
+//                @Override
+//                public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
+//                    return cruiseConfig;
+//                }
+//            });
+//        } catch (Exception e) {
+//            mergedGoConfig.saveConfigError(e);
+//        }
+//    }
 
     public List<PartialConfig> lastPartials() {
         List<PartialConfig> list = new ArrayList<>();
-        for (PartialConfig partialConfig : fingerprintToLatestValidConfigMap.values()) {
+        for (PartialConfig partialConfig : cachedGoPartials.getFingerprintToLatestValidConfigMap().values()) {
             list.add(partialConfig);
         }
         return list;
@@ -110,25 +106,58 @@ public class GoPartialConfig implements PartialConfigUpdateCompletedListener, Ch
             //TODO maybe validate new part without context of other partials or main config
 
             // put latest valid
-            fingerprintToLatestValidConfigMap.put(fingerprint, newPart);
+            cachedGoPartials.getFingerprintToLatestKnownConfigMap().put(fingerprint, newPart);
+            if (updateConfig()) {
+                this.cachedGoPartials.getFingerprintToLatestValidConfigMap().put(fingerprint, newPart);
+            }
+        }
+    }
 
-            notifyListeners();
+    private boolean updateConfig() {
+        Map<String, PartialConfig> map = new Cloner().deepClone(cachedGoPartials.getFingerprintToLatestKnownConfigMap());
+        try {
+            final List<PartialConfig> partials = new ArrayList<>();
+            for (PartialConfig partialConfig : map.values()) {
+                partials.add(partialConfig);
+            }
+            goConfigService.updateConfig(new UpdateConfigCommand() {
+                @Override
+                public CruiseConfig update(CruiseConfig cruiseConfig) throws Exception {
+                    cruiseConfig.setPartials(partials);
+                    return cruiseConfig;
+                }
+
+            });
+            return true;
+        } catch (Exception e) {
+            mergedGoConfig.saveConfigError(e);
+            return false;
         }
     }
 
     @Override
     public synchronized void onChangedRepoConfigWatchList(ConfigReposConfig newConfigRepos) {
-        boolean removedAny = false;
+        List<String> toRemove = new ArrayList<>();
         // remove partial configs from map which are no longer on the list
-        for (String fingerprint : this.fingerprintToLatestValidConfigMap.keySet()) {
+        for (String fingerprint : cachedGoPartials.getFingerprintToLatestKnownConfigMap().keySet()) {
             if (!newConfigRepos.hasMaterialWithFingerprint(fingerprint)) {
-                this.fingerprintToLatestValidConfigMap.remove(fingerprint);
-                removedAny = true;
+                cachedGoPartials.getFingerprintToLatestKnownConfigMap().remove(fingerprint);
+                toRemove.add(fingerprint);
             }
         }
-        //fire event about changed partials collection
-        if (removedAny)
-            this.notifyListeners();
+        if (!toRemove.isEmpty()) {
+            if (updateConfig()) {
+                for (String fingerprint : toRemove) {
+                    this.cachedGoPartials.getFingerprintToLatestValidConfigMap().remove(fingerprint);
+                }
+            }
+        }
     }
 
+    @Override
+    public void onConfigChange(CruiseConfig newCruiseConfig) {
+        if (!cachedGoPartials.areAllKnownPartialsValid()) {
+            updateConfig();
+        }
+    }
 }

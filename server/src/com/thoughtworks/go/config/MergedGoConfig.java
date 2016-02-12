@@ -21,6 +21,7 @@ import com.thoughtworks.go.config.exceptions.GoConfigInvalidException;
 import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.config.validation.GoConfigValidity;
 import com.thoughtworks.go.domain.ConfigErrors;
+import com.thoughtworks.go.listener.AsyncConfigChangedListener;
 import com.thoughtworks.go.listener.ConfigChangedListener;
 import com.thoughtworks.go.listener.PipelineConfigChangedListener;
 import com.thoughtworks.go.server.domain.Username;
@@ -52,6 +53,7 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
 
     private final ServerHealthService serverHealthService;
     private List<ConfigChangedListener> listeners = new ArrayList<ConfigChangedListener>();
+    private List<AsyncConfigChangedListener> asyncListeners = new ArrayList<AsyncConfigChangedListener>();
 
     // this is merged config when possible
     private volatile CruiseConfig currentConfig;
@@ -154,7 +156,20 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
                 saveValidConfigToCacheAndNotifyConfigChangeListeners(configHolder);
             }
         }
+        notifyAsyncListeners();
+    }
 
+    @Override
+    public void notifyAsyncListeners() {
+        for (final AsyncConfigChangedListener asyncListener : asyncListeners) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    asyncListener.onConfigChange(configHolder.config);
+                }
+            }
+            ).start();
+        }
     }
 
     public CruiseConfig loadForEditing() {
@@ -252,6 +267,11 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
         if (currentConfig != null) {
             listener.onConfigChange(currentConfig);
         }
+    }
+
+    @Override
+    public void registerAsyncListener(AsyncConfigChangedListener listener) {
+        asyncListeners.add(listener);
     }
 
     private synchronized void notifyListeners(CruiseConfig newCruiseConfig) {

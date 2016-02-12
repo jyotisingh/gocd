@@ -17,6 +17,7 @@
 package com.thoughtworks.go.config;
 
 import com.thoughtworks.go.config.validation.GoConfigValidity;
+import com.thoughtworks.go.listener.AsyncConfigChangedListener;
 import com.thoughtworks.go.listener.ConfigChangedListener;
 import com.thoughtworks.go.listener.PipelineConfigChangedListener;
 import com.thoughtworks.go.server.domain.Username;
@@ -49,6 +50,11 @@ public class CachedFileGoConfig implements CachedGoConfig {
     @Autowired public CachedFileGoConfig(GoFileConfigDataSource dataSource, ServerHealthService serverHealthService) {
         this.dataSource = dataSource;
         this.serverHealthService = serverHealthService;
+    }
+
+    @Override
+    public void notifyAsyncListeners() {
+        throw new RuntimeException("shouldn't get called");
     }
 
     @Override
@@ -250,6 +256,11 @@ public class CachedFileGoConfig implements CachedGoConfig {
 //        if (currentConfig != null) {
 //            listener.onConfigChange(currentConfig);
 //        }
+    }
+
+    @Override
+    public void registerAsyncListener(AsyncConfigChangedListener listener) {
+        throw new RuntimeException("shouldn't get called");
     }
 
 //    private synchronized void notifyListeners(CruiseConfig newCruiseConfig) {
