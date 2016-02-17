@@ -48,7 +48,6 @@ public class GoPartialConfig implements PartialConfigUpdateCompletedListener, Ch
 
     private GoRepoConfigDataSource repoConfigDataSource;
     private GoConfigWatchList configWatchList;
-    private final MergedGoConfig mergedGoConfig;
     private final GoConfigService goConfigService;
     private final CachedGoPartials cachedGoPartials;
     private final ServerHealthService serverHealthService;
@@ -57,21 +56,15 @@ public class GoPartialConfig implements PartialConfigUpdateCompletedListener, Ch
 
     @Autowired
     public GoPartialConfig(GoRepoConfigDataSource repoConfigDataSource,
-                           GoConfigWatchList configWatchList, MergedGoConfig mergedGoConfig, GoConfigService goConfigService, CachedGoPartials cachedGoPartials, ServerHealthService serverHealthService) {
+                           GoConfigWatchList configWatchList, GoConfigService goConfigService, CachedGoPartials cachedGoPartials, ServerHealthService serverHealthService) {
         this.repoConfigDataSource = repoConfigDataSource;
         this.configWatchList = configWatchList;
-        this.mergedGoConfig = mergedGoConfig;
         this.goConfigService = goConfigService;
         this.cachedGoPartials = cachedGoPartials;
         this.serverHealthService = serverHealthService;
 
         this.configWatchList.registerListener(this);
         this.repoConfigDataSource.registerListener(this);
-        this.mergedGoConfig.registerAsyncListener(this);
-    }
-
-    public void registerListener(PartialConfigChangedListener listener) {
-        this.listeners.add(listener);
     }
 
     public boolean hasListener(PartialConfigChangedListener listener) {

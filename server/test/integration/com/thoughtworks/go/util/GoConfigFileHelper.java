@@ -119,9 +119,6 @@ public class GoConfigFileHelper {
                     configCache, new ServerVersion(), configElementImplementationRegistry, serverHealthService);
             dataSource.upgradeIfNecessary();
             CachedFileGoConfig fileService = new CachedFileGoConfig(dataSource,serverHealthService);
-            GoConfigWatchList configWatchList = new GoConfigWatchList(fileService);
-            GoRepoConfigDataSource repoConfigDataSource = new GoRepoConfigDataSource(configWatchList,
-                    new GoConfigPluginService(configCache,configElementImplementationRegistry));
             MergedGoConfig cachedConfigService = new MergedGoConfig(serverHealthService,fileService, dataSource);
             cachedConfigService.loadConfigIfNull();
             return new GoConfigDao(cachedConfigService);

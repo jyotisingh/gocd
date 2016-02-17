@@ -49,11 +49,6 @@ public class GoConfigDao {
     private CachedGoConfig cachedConfigService;
     private Cloner cloner = new Cloner();
 
-    //used in tests
-    public GoConfigDao(CachedGoConfig cachedConfigService) {
-        this.cachedConfigService = cachedConfigService;
-    }
-
     @Autowired
     public GoConfigDao(MergedGoConfig cachedConfigService) {
         this.cachedConfigService = cachedConfigService;
@@ -181,7 +176,6 @@ public class GoConfigDao {
                 }
             }
         }
-        cachedConfigService.notifyAsyncListeners();
     }
 
     public ConfigSaveState updateConfig(UpdateConfigCommand command) {
@@ -205,7 +199,6 @@ public class GoConfigDao {
             }
             LOGGER.info("Config update request by {} is completed", UserHelper.getUserName().getUsername());
         }
-        cachedConfigService.notifyAsyncListeners();
         return configSaveState;
     }
 

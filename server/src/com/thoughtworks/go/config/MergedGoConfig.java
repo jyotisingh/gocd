@@ -16,12 +16,9 @@
 
 package com.thoughtworks.go.config;
 
-import com.rits.cloning.Cloner;
-import com.thoughtworks.go.config.exceptions.GoConfigInvalidException;
 import com.thoughtworks.go.config.remote.PartialConfig;
 import com.thoughtworks.go.config.validation.GoConfigValidity;
 import com.thoughtworks.go.domain.ConfigErrors;
-import com.thoughtworks.go.listener.AsyncConfigChangedListener;
 import com.thoughtworks.go.listener.ConfigChangedListener;
 import com.thoughtworks.go.listener.PipelineConfigChangedListener;
 import com.thoughtworks.go.server.domain.Username;
@@ -45,15 +42,9 @@ import static com.thoughtworks.go.util.ExceptionUtils.bomb;
 @Component
 public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, PartialConfigChangedListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(CachedFileGoConfig.class);
-
     private CachedFileGoConfig fileService;
-    private GoPartialConfig partialConfig;
-
     private final ServerHealthService serverHealthService;
     private List<ConfigChangedListener> listeners = new ArrayList<ConfigChangedListener>();
-    private List<AsyncConfigChangedListener> asyncListeners = new ArrayList<AsyncConfigChangedListener>();
-
-    // this is merged config when possible
     private volatile CruiseConfig currentConfig;
     private volatile CruiseConfig currentConfigForEdit;
     private volatile GoConfigHolder configHolder;
@@ -64,16 +55,12 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
                                      CachedFileGoConfig fileService, GoFileConfigDataSource dataSource) {
         this.serverHealthService = serverHealthService;
         this.fileService = fileService;
-//        this.partialConfig = partialConfig;
         this.dataSource = dataSource;
-
-//        this.partialConfig.registerListener(this);
     }
 
     @Override
     public void onConfigChange(CruiseConfig newCruiseConfig) {
         throw  new RuntimeException("should not get called");
-//        this.tryAssembleMergedConfig(this.fileService.loadConfigHolder(), this.partialConfig.lastPartials());
     }
     @Override
     public void onPartialConfigChanged(List<PartialConfig> partials) {
@@ -148,29 +135,13 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
                 saveValidConfigToCacheAndNotifyConfigChangeListeners(configHolder);
             }
         }
-        notifyAsyncListeners();
-    }
-
-    @Override
-    public void notifyAsyncListeners() {
-        for (final AsyncConfigChangedListener asyncListener : asyncListeners) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    asyncListener.onConfigChange(configHolder.config);
-                }
-            }
-            ).start();
-        }
     }
 
     public CruiseConfig loadForEditing() {
-        // merged cannot be (entirely) edited but we return it so that all pipelines are rendered in admin->pipelines
         return currentConfigForEdit;
     }
 
     public CruiseConfig currentConfig() {
-        //returns merged cruise config if appropriate
         if (currentConfig == null) {
             currentConfig = new BasicCruiseConfig();
         }
@@ -185,8 +156,6 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
             }
         }
     }
-
-    // no actions on timer now. We only react to events in CachedFileGoConfig and in GoPartialConfig
 
     public synchronized ConfigSaveState writeWithLock(UpdateConfigCommand updateConfigCommand) {
         GoFileConfigDataSource.GoConfigSaveResult saveResult = this.fileService.writeWithLockNew(updateConfigCommand, this.configHolder);
@@ -259,11 +228,6 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
         if (currentConfig != null) {
             listener.onConfigChange(currentConfig);
         }
-    }
-
-    @Override
-    public void registerAsyncListener(AsyncConfigChangedListener listener) {
-        asyncListeners.add(listener);
     }
 
     private synchronized void notifyListeners(CruiseConfig newCruiseConfig) {
