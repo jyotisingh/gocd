@@ -46,8 +46,6 @@ import static com.thoughtworks.go.util.ExceptionUtils.bomb;
 public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, PartialConfigChangedListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(CachedFileGoConfig.class);
 
-    public static final String INVALID_CRUISE_CONFIG_MERGE = "Invalid Merged Configuration";
-
     private CachedFileGoConfig fileService;
     private GoPartialConfig partialConfig;
 
@@ -121,12 +119,6 @@ public class MergedGoConfig implements CachedGoConfig, ConfigChangedListener, Pa
 //            LOGGER.error("Failed validation of merged configuration: {}", e.toString());
 //            saveConfigError(e);
 //        }
-    }
-
-    public synchronized void saveConfigError(Exception e) {
-        this.lastException = e;
-        ServerHealthState state = ServerHealthState.error(INVALID_CRUISE_CONFIG_MERGE, GoConfigValidity.invalid(e).errorMessage(), invalidConfigType());
-        serverHealthService.update(state);
     }
 
     public static List<ConfigErrors> validate(CruiseConfig config) {

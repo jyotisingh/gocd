@@ -17,18 +17,7 @@
 package com.thoughtworks.go.config;
 
 import com.thoughtworks.go.config.remote.PartialConfig;
-import com.thoughtworks.go.config.validation.GoConfigValidity;
-import com.thoughtworks.go.domain.ConfigErrors;
-import com.thoughtworks.go.listener.ConfigChangedListener;
-import com.thoughtworks.go.listener.PipelineConfigChangedListener;
-import com.thoughtworks.go.server.domain.Username;
-import com.thoughtworks.go.server.service.PipelineConfigService;
-import com.thoughtworks.go.serverhealth.HealthStateType;
-import com.thoughtworks.go.serverhealth.ServerHealthService;
-import com.thoughtworks.go.serverhealth.ServerHealthState;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.joda.time.DateTime;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -40,14 +29,58 @@ import static com.thoughtworks.go.util.ExceptionUtils.bomb;
 
 @Component
 public class CachedGoPartials {
-    private Map<String, PartialConfig> fingerprintToLatestValidConfigMap = new ConcurrentHashMap<String, PartialConfig>();
-    private Map<String, PartialConfig> fingerprintToLatestKnownConfigMap = new ConcurrentHashMap<String, PartialConfig>();
-
-    public Map<String, PartialConfig> getFingerprintToLatestValidConfigMap() {
-        return fingerprintToLatestValidConfigMap;
+    public List<PartialConfig> lastValidPartials() {
+        return getPartialConfigs(fingerprintToLatestValidConfigMap);
+    }
+    public List<PartialConfig> lastKnownPartials() {
+        return getPartialConfigs(fingerprintToLatestKnownConfigMap);
     }
 
-    public Map<String, PartialConfig> getFingerprintToLatestKnownConfigMap() {
+    private List<PartialConfig> getPartialConfigs(Map<String, UpdatedPartial> map) {
+        List<PartialConfig> list = new ArrayList<>();
+        for (UpdatedPartial partialConfig : map.values()) {
+            list.add(partialConfig.partialConfig);
+        }
+        return list;
+    }
+
+    public void removeKnown(String fingerprint) {
+        if (fingerprintToLatestKnownConfigMap.containsKey(fingerprint)) {
+            fingerprintToLatestKnownConfigMap.remove(fingerprint);
+        }
+    }
+    public void removeValid(String fingerprint) {
+        if (fingerprintToLatestValidConfigMap.containsKey(fingerprint)) {
+            fingerprintToLatestValidConfigMap.remove(fingerprint);
+        }
+
+    }
+
+
+    public void addOrUpdate(String fingerprint, PartialConfig newPart) {
+        fingerprintToLatestKnownConfigMap.put(fingerprint, new UpdatedPartial(newPart, DateTime.now()));
+    }
+
+    public void markAsValid(String fingerprint, PartialConfig newPart) {
+        DateTime lastUpdated = fingerprintToLatestKnownConfigMap.get(fingerprint).lastUpdated;
+        fingerprintToLatestValidConfigMap.put(fingerprint, new UpdatedPartial(newPart, lastUpdated));
+    }
+
+
+    private class UpdatedPartial {
+        private PartialConfig partialConfig;
+        private DateTime lastUpdated;
+
+        public UpdatedPartial(PartialConfig partialConfig, DateTime lastUpdated) {
+            this.partialConfig = partialConfig;
+            this.lastUpdated = lastUpdated;
+        }
+    }
+
+    private Map<String, UpdatedPartial> fingerprintToLatestValidConfigMap = new ConcurrentHashMap<>();
+    private Map<String, UpdatedPartial> fingerprintToLatestKnownConfigMap = new ConcurrentHashMap<>();
+
+    public Map<String, UpdatedPartial> getFingerprintToLatestKnownConfigMap() {
         return fingerprintToLatestKnownConfigMap;
     }
 

@@ -70,6 +70,10 @@
           p:targetObject-ref="materialUpdateService"
           p:targetMethod="onTimer"/>
 
+    <bean id="configRepoRetry" class="com.thoughtworks.go.timer.ModeAwareMethodInvokingTimerTaskFactoryBean"
+          p:targetObject-ref="goPartialConfig"
+          p:targetMethod="onTimer"/>
+
     <!-- auto build cause producing thread -->
     <bean name="produceBuildCausesThread" class="org.springframework.scheduling.timer.TimerFactoryBean">
         <property name="scheduledTimerTasks">
@@ -89,6 +93,16 @@
                       p:delay="${cruise.material.update.delay}"
                       p:period="${cruise.material.update.interval}"
                       p:timerTask-ref="materialUpdaterExecutor"/>
+            </list>
+        </property>
+    </bean>
+    <bean name="configRepoRetryThread" class="org.springframework.scheduling.timer.TimerFactoryBean">
+        <property name="scheduledTimerTasks">
+            <list>
+                <bean class="org.springframework.scheduling.timer.ScheduledTimerTask"
+                      p:delay="10000"
+                      p:period="${go.config.partials.retry.interval}"
+                      p:timerTask-ref="configRepoRetry"/>
             </list>
         </property>
     </bean>
