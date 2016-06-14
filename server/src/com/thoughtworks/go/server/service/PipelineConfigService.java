@@ -75,8 +75,6 @@ public class PipelineConfigService implements ConfigChangedListener, Initializer
         return new EntityConfigChangedListener<PipelineConfig>() {
             @Override
             public void onEntityConfigChange(PipelineConfig pipelineConfig) {
-                PipelineConfigurationCache.getInstance().onPipelineConfigChange(pipelineConfig);
-                PipelineConfigurationCache.getInstance().onConfigChange(goConfigService.cruiseConfig());
                 if (goCache.get(GO_PIPELINE_CONFIGS_ETAGS_CACHE, pipelineConfig.name().toLower()) != null) {
                     goCache.remove(GO_PIPELINE_CONFIGS_ETAGS_CACHE, pipelineConfig.name().toLower());
                 }
@@ -194,7 +192,6 @@ public class PipelineConfigService implements ConfigChangedListener, Initializer
 
     @Override
     public void onConfigChange(CruiseConfig newCruiseConfig) {
-        PipelineConfigurationCache.getInstance().onConfigChange(goConfigService.cruiseConfig());
         if (goCache.get(GO_PIPELINE_CONFIGS_ETAGS_CACHE) != null) {
             goCache.remove(GO_PIPELINE_CONFIGS_ETAGS_CACHE);
         }
