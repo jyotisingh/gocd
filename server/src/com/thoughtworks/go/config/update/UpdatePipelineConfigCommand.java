@@ -58,6 +58,11 @@ public class UpdatePipelineConfigCommand implements EntityConfigUpdateCommand<Pi
     }
 
     @Override
+    public void clearErrors() {
+        BasicCruiseConfig.clearErrors(pipelineConfig);
+    }
+
+    @Override
     public PipelineConfig getPreprocessedEntityConfig() {
         return preprocessedPipelineConfig;
     }

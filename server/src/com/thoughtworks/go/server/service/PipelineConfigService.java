@@ -20,13 +20,12 @@ import com.thoughtworks.go.config.*;
 import com.thoughtworks.go.config.commands.EntityConfigUpdateCommand;
 import com.thoughtworks.go.config.exceptions.GoConfigInvalidException;
 import com.thoughtworks.go.config.pluggabletask.PluggableTask;
+import com.thoughtworks.go.config.remote.ConfigOrigin;
 import com.thoughtworks.go.config.update.ConfigUpdateCheckFailedException;
 import com.thoughtworks.go.config.update.CreatePipelineConfigCommand;
 import com.thoughtworks.go.config.update.DeletePipelineConfigCommand;
 import com.thoughtworks.go.config.update.UpdatePipelineConfigCommand;
-import com.thoughtworks.go.config.remote.ConfigOrigin;
 import com.thoughtworks.go.domain.Task;
-import com.thoughtworks.go.i18n.LocalizedMessage;
 import com.thoughtworks.go.i18n.LocalizedMessage;
 import com.thoughtworks.go.listener.ConfigChangedListener;
 import com.thoughtworks.go.listener.EntityConfigChangedListener;
@@ -40,11 +39,7 @@ import com.thoughtworks.go.util.Node;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * @understands providing services around a pipeline configuration
@@ -141,7 +136,7 @@ public class PipelineConfigService implements ConfigChangedListener, Initializer
         } catch (Exception e) {
             if (e instanceof GoConfigInvalidException) {
                 if(!result.hasMessage()){
-                    result.unprocessableEntity(LocalizedMessage.string("ENTITY_CONFIG_VALIDATION_FAILED", pipelineConfig.getClass().getAnnotation(ConfigTag.class).value(), CaseInsensitiveString.str(pipelineConfig.name())));
+                    result.unprocessableEntity(LocalizedMessage.string("ENTITY_CONFIG_VALIDATION_FAILED", pipelineConfig.getClass().getAnnotation(ConfigTag.class).value(), CaseInsensitiveString.str(pipelineConfig.name()), e.getMessage()));
                 }
             } else if (!(e instanceof ConfigUpdateCheckFailedException)) {
                 LOGGER.error(e.getMessage(), e);
