@@ -310,7 +310,7 @@ public class GoFileConfigDataSource {
                 String configAsXml = trySavingConfig(updatingCommand, configHolder, lastKnownPartials);
                 validatedConfigHolder = internalLoad(configAsXml, getConfigUpdatingUser(updatingCommand), lastKnownPartials);
                 updateMergedConfigForEdit(validatedConfigHolder, lastKnownPartials);
-            } catch (GoConfigInvalidException e) {
+            } catch (Exception e) {
                 List<PartialConfig> lastValidPartials = cachedGoPartials.lastValidPartials();
                 //TODO if last known partials are all equal to last valid partials, then fallback is just a waste of resources,
                 // It would attempt config update with the same set of partials
