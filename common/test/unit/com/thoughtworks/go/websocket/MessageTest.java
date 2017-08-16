@@ -44,9 +44,9 @@ public class MessageTest {
 
     @Test
     public void encodeAndDecodeMessageWithoutData() {
-        byte[] msg = MessageEncoding.encodeMessage(new Message(Action.ping));
+        byte[] msg = MessageEncoding.encodeMessage(new Message(Action.updateAgentRuntimeInfo));
         Message decoded = MessageEncoding.decodeMessage(new ByteArrayInputStream(msg));
-        assertThat(decoded.getAction(), is(Action.ping));
+        assertThat(decoded.getAction(), is(Action.updateAgentRuntimeInfo));
         assertNull(decoded.getData());
 
         assertEquals(decoded, MessageEncoding.decodeMessage(new ByteArrayInputStream(msg)));
@@ -55,7 +55,7 @@ public class MessageTest {
     @Test
     public void encodeAndDecodePingMessage() {
         AgentRuntimeInfo info = new AgentRuntimeInfo(new AgentIdentifier("hostName", "ipAddress", "uuid"), null, null, null, false, new TimeProvider());
-        byte[] msg = MessageEncoding.encodeMessage(new Message(Action.ping, MessageEncoding.encodeData(info)));
+        byte[] msg = MessageEncoding.encodeMessage(new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
         Message decoded = MessageEncoding.decodeMessage(new ByteArrayInputStream(msg));
         AgentRuntimeInfo decodedInfo = MessageEncoding.decodeData(decoded.getData(), AgentRuntimeInfo.class);
         assertThat(decodedInfo.getIdentifier(), is(info.getIdentifier()));

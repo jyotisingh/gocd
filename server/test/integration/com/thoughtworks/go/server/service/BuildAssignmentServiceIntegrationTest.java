@@ -718,7 +718,7 @@ public class BuildAssignmentServiceIntegrationTest {
         AgentRuntimeInfo info = AgentRuntimeInfo.fromServer(agentConfig, true, "location", 1000000l, "OS", false, timeProvider);
         info.setCookie("cookie");
 
-        agentRemoteHandler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        agentRemoteHandler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
 
         AgentInstance agent = agentService.findAgent(agentConfig.getUuid());
         assertFalse(agent.isBuilding());
@@ -738,7 +738,7 @@ public class BuildAssignmentServiceIntegrationTest {
         AgentRuntimeInfo info = AgentRuntimeInfo.fromServer(agentConfig, true, "location", 1000000l, "OS", false, timeProvider);
         info.setCookie("cookie");
 
-        agentRemoteHandler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        agentRemoteHandler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
 
         buildAssignmentService.onTimer();
 
@@ -755,7 +755,7 @@ public class BuildAssignmentServiceIntegrationTest {
         AgentRuntimeInfo info = AgentRuntimeInfo.fromServer(agentConfig, true, "location", 1000000l, "OS", false, timeProvider);
         info.setCookie("cookie");
 
-        agentRemoteHandler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        agentRemoteHandler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
         buildAssignmentService.onTimer();
 
         assertThat(agent.messages.size(), is(0));
@@ -779,7 +779,7 @@ public class BuildAssignmentServiceIntegrationTest {
             info.setStatus(status);
             agent = new AgentStub();
 
-            agentRemoteHandler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+            agentRemoteHandler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
             buildAssignmentService.onTimer();
 
             assertThat("Should not assign work when agent status is " + status, agent.messages.size(), is(0));
@@ -794,7 +794,7 @@ public class BuildAssignmentServiceIntegrationTest {
         AgentRuntimeInfo info = AgentRuntimeInfo.fromServer(agentConfig, true, "location", 1000000l, "OS", false, timeProvider);
         info.setCookie("cookie");
 
-        agentRemoteHandler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        agentRemoteHandler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
 
         AgentInstance agentInstance = agentService.findAgentAndRefreshStatus(info.getUUId());
         agentInstance.cancel();
@@ -815,7 +815,7 @@ public class BuildAssignmentServiceIntegrationTest {
         assertThat(agentService.findAgent(info.getUUId()).isRegistered(), is(false));
 
         info.setCookie("cookie");
-        agentRemoteHandler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        agentRemoteHandler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
         buildAssignmentService.onTimer();
 
         assertThat(agent.messages.size(), is(1));
@@ -831,7 +831,7 @@ public class BuildAssignmentServiceIntegrationTest {
         AgentRuntimeInfo canceledAgentInfo = AgentRuntimeInfo.fromServer(canceledAgentConfig, true, "location", 1000000l, "OS", false, timeProvider);
         canceledAgentInfo.setCookie("cookie1");
         AgentStub canceledAgent = new AgentStub();
-        agentRemoteHandler.process(canceledAgent, new Message(Action.ping, MessageEncoding.encodeData(canceledAgentInfo)));
+        agentRemoteHandler.process(canceledAgent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(canceledAgentInfo)));
         AgentInstance agentInstance = agentService.findAgentAndRefreshStatus(canceledAgentInfo.getUUId());
         agentInstance.cancel();
 
@@ -840,13 +840,13 @@ public class BuildAssignmentServiceIntegrationTest {
         agentService.requestRegistration(new Username("bob"), needRegisterAgentInfo);
         needRegisterAgentInfo.setCookie("cookie2");
         AgentStub needRegisterAgent = new AgentStub();
-        agentRemoteHandler.process(needRegisterAgent, new Message(Action.ping, MessageEncoding.encodeData(needRegisterAgentInfo)));
+        agentRemoteHandler.process(needRegisterAgent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(needRegisterAgentInfo)));
 
         AgentConfig assignedAgent = AgentMother.remoteAgent();
         configHelper.addAgent(assignedAgent);
         AgentRuntimeInfo assignedAgentInfo = AgentRuntimeInfo.fromServer(assignedAgent, true, "location", 1000000l, "OS", false, timeProvider);
         assignedAgentInfo.setCookie("cookie3");
-        agentRemoteHandler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(assignedAgentInfo)));
+        agentRemoteHandler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(assignedAgentInfo)));
 
         buildAssignmentService.onTimer();
 

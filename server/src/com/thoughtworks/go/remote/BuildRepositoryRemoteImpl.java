@@ -47,14 +47,14 @@ public class BuildRepositoryRemoteImpl {
     }
 
     public AgentInstruction ping(AgentRuntimeInfo info) {
-        LOGGER.trace("{} ping received.", info);
+        LOGGER.trace("{} updateAgentRuntimeInfo received.", info);
         try {
             agentService.updateRuntimeInfo(info);
             return new AgentInstruction(agentService.findAgentAndRefreshStatus(info.getUUId()).isCancelled());
         } catch (AgentWithDuplicateUUIDException agentException) {
             throw wrappedException(agentException);
         } catch (Exception e) {
-            LOGGER.error("Error occurred in {} ping.", info, e);
+            LOGGER.error("Error occurred in {} updateAgentRuntimeInfo.", info, e);
             throw wrappedException(e);
         }
     }
@@ -63,7 +63,7 @@ public class BuildRepositoryRemoteImpl {
         handleFailuresDuringReporting(agentRuntimeInfo, jobIdentifier, "status", state.toString(), new ReportingAction() {
             @Override
             public void call() throws Exception {
-                //TODO: may be i don't belong here, ping already updates agent runtime info
+                //TODO: may be i don't belong here, updateAgentRuntimeInfo already updates agent runtime info
                 agentService.updateRuntimeInfo(agentRuntimeInfo);
                 buildRepositoryService.updateStatusFromAgent(jobIdentifier, state, agentRuntimeInfo.getUUId());
                 jobStatusTopic.post(new JobStatusMessage(jobIdentifier, state, agentRuntimeInfo.getUUId()));
@@ -76,7 +76,7 @@ public class BuildRepositoryRemoteImpl {
         handleFailuresDuringReporting(agentRuntimeInfo, jobIdentifier, "result", result.toString(), new ReportingAction() {
             @Override
             public void call() throws Exception {
-                //TODO: may be i don't belong here, ping already updates agent runtime info
+                //TODO: may be i don't belong here, updateAgentRuntimeInfo already updates agent runtime info
                 agentService.updateRuntimeInfo(agentRuntimeInfo);
                 buildRepositoryService.completing(jobIdentifier, result, agentRuntimeInfo.getUUId());
             }
@@ -90,7 +90,7 @@ public class BuildRepositoryRemoteImpl {
             @Override
             public void call() throws Exception {
 
-                //TODO: may be i don't belong here, ping already updates agent runtime info
+                //TODO: may be i don't belong here, updateAgentRuntimeInfo already updates agent runtime info
                 agentService.updateRuntimeInfo(agentRuntimeInfo);
 
                 buildRepositoryService.completing(jobIdentifier, result, agentRuntimeInfo.getUUId());

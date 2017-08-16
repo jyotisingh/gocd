@@ -76,7 +76,7 @@ public class BuildRepositoryRemoteImplTest {
         AgentInstruction instruction = buildRepository.ping(info);
         assertThat(instruction.isShouldCancelJob(), is(true));
         verify(agentService).updateRuntimeInfo(info);
-        assertThat(log(), hasItem(info + " ping received."));
+        assertThat(log(), hasItem(info + " updateAgentRuntimeInfo received."));
     }
 
     @Test
@@ -89,7 +89,7 @@ public class BuildRepositoryRemoteImplTest {
         } catch (Exception e) {
             assertRemoteException(e, runtimeException);
         }
-        assertThat(log(), hasItem("Error occurred in " + info + " ping."));
+        assertThat(log(), hasItem("Error occurred in " + info + " updateAgentRuntimeInfo."));
     }
 
     @Test

@@ -41,7 +41,6 @@ import java.util.concurrent.Future;
 import static org.mockito.Mockito.*;
 
 public class WebSocketClientHandlerTest {
-
     private WebSocketClientHandler webSocketClientHandler;
     private GoAgentServerWebSocketClientBuilder builder;
     private URLService urlService;

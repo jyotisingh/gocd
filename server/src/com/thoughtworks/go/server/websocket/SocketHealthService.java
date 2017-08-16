@@ -55,7 +55,7 @@ public class SocketHealthService {
                         deregister(socket);
                         socket.close();
                     }
-                    LOGGER.error("Failed to ping socket %s", socket.key(), e);
+                    LOGGER.error("Failed to updateAgentRuntimeInfo socket %s", socket.key(), e);
                 }
             }
         });

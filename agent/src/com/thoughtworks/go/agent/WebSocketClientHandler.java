@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.net.URI;
+import java.util.concurrent.TimeUnit;
 
 public class WebSocketClientHandler {
     private static final Logger LOG = LoggerFactory.getLogger(WebSocketClientHandler.class);
@@ -33,6 +34,7 @@ public class WebSocketClientHandler {
     private WebSocketClient webSocketClient;
     private GoAgentServerWebSocketClientBuilder builder;
     private URLService urlService;
+    private AgentWebSocketClientController websocket;
 
     @Autowired
     public WebSocketClientHandler(GoAgentServerWebSocketClientBuilder builder, URLService urlService) {
@@ -40,7 +42,7 @@ public class WebSocketClientHandler {
         this.urlService = urlService;
     }
 
-    public Session connect(AgentWebSocketClientController controller)
+    public Session connect()
             throws Exception {
         if (webSocketClient == null || !webSocketClient.isRunning()) {
             if (webSocketClient != null) {
@@ -53,10 +55,15 @@ public class WebSocketClientHandler {
         LOG.info("Connecting to websocket endpoint: {}", urlService.getAgentRemoteWebSocketUrl());
         ClientUpgradeRequest request = new ClientUpgradeRequest();
         request.addExtensions("fragment;maxLength=" + getMessageBufferSize());
-        return webSocketClient.connect(controller, new URI(urlService.getAgentRemoteWebSocketUrl()), request).get();
+        return webSocketClient.connect(websocket, new URI(urlService.getAgentRemoteWebSocketUrl()), request)
+                .get(webSocketClient.getConnectTimeout(), TimeUnit.MILLISECONDS);
     }
 
     private int getMessageBufferSize() {
         return webSocketClient.getPolicy().getMaxBinaryMessageBufferSize();
+    }
+
+    public void setWebsocket(AgentWebSocketClientController websocket) {
+        this.websocket = websocket;
     }
 }

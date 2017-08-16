@@ -82,7 +82,7 @@ public class AgentHTTPClientController extends AgentController {
                 LOG.trace("{} pinged server [{}]", agent, server);
             }
         } catch (Throwable e) {
-            LOG.error("Error occurred when agent tried to ping server: ", e);
+            LOG.error("Error occurred when agent tried to updateAgentRuntimeInfo server: ", e);
         }
     }
 

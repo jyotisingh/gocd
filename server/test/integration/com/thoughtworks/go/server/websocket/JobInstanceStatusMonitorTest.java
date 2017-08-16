@@ -127,7 +127,7 @@ public class JobInstanceStatusMonitorTest {
         fixture.createPipelineWithFirstStageScheduled();
         AgentRuntimeInfo info = AgentRuntimeInfo.fromServer(agentConfig, true, "location", 1000000l, "OS", false, timeProvider);
         info.setCookie("cookie");
-        agentRemoteHandler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        agentRemoteHandler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
 
         buildAssignmentService.onTimer();
 
@@ -154,7 +154,7 @@ public class JobInstanceStatusMonitorTest {
         fixture.createPipelineWithFirstStageScheduled();
         AgentRuntimeInfo info = AgentRuntimeInfo.fromServer(agentConfig, true, "location", 1000000l, "OS", false, timeProvider);
         info.setCookie("cookie");
-        agentRemoteHandler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        agentRemoteHandler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
 
         buildAssignmentService.onTimer();
 

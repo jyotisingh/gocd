@@ -126,7 +126,7 @@ public class AgentWebSocketClientControllerTest {
 
         Message message = argumentCaptor.getValue();
         assertThat(message.getAcknowledgementId(), notNullValue());
-        assertThat(message.getAction(), is(Action.ping));
+        assertThat(message.getAction(), is(Action.updateAgentRuntimeInfo));
         assertThat(message.getData(), is(MessageEncoding.encodeData(agentController.getAgentRuntimeInfo())));
     }
 
@@ -136,7 +136,7 @@ public class AgentWebSocketClientControllerTest {
 
         agentController = createAgentController();
         when(webSocketSessionHandler.isNotRunning()).thenReturn(true);
-        doThrow(new GeneralSecurityException()).when(webSocketClientHandler).connect(agentController);
+        doThrow(new GeneralSecurityException()).when(webSocketClientHandler).connect();
 
         agentController.init();
 
@@ -170,7 +170,7 @@ public class AgentWebSocketClientControllerTest {
 
         Message message = argumentCaptor.getAllValues().get(0);
         assertThat(message.getAcknowledgementId(), notNullValue());
-        assertThat(message.getAction(), is(Action.ping));
+        assertThat(message.getAction(), is(Action.updateAgentRuntimeInfo));
         assertThat(message.getData(), is(MessageEncoding.encodeData(agentController.getAgentRuntimeInfo())));
     }
 
@@ -190,7 +190,7 @@ public class AgentWebSocketClientControllerTest {
 
         Message message = argumentCaptor.getAllValues().get(1);
         assertThat(message.getAcknowledgementId(), notNullValue());
-        assertThat(message.getAction(), is(Action.ping));
+        assertThat(message.getAction(), is(Action.updateAgentRuntimeInfo));
         assertThat(message.getData(), is(MessageEncoding.encodeData(agentController.getAgentRuntimeInfo())));
 
         Message message2 = argumentCaptor.getAllValues().get(0);

@@ -64,7 +64,7 @@ public class AgentRemoteHandlerTest {
         AgentRuntimeInfo info = new AgentRuntimeInfo(instance.getAgentIdentifier(), AgentRuntimeStatus.Idle, null, "cookie", false, timeProvider);
         when(remote.ping(info)).thenReturn(new AgentInstruction(false));
 
-        handler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        handler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
 
         verify(remote).ping(info);
         assertEquals(1, handler.connectedAgents().size());
@@ -79,7 +79,7 @@ public class AgentRemoteHandlerTest {
 
         when(remote.ping(info)).thenReturn(new AgentInstruction(true));
 
-        handler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        handler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
 
         verify(remote).ping(info);
         assertEquals(1, handler.connectedAgents().size());
@@ -96,7 +96,7 @@ public class AgentRemoteHandlerTest {
 
         when(remote.ping(info)).thenReturn(new AgentInstruction(true));
 
-        handler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        handler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
 
         verify(remote).ping(info);
         assertEquals(1, handler.connectedAgents().size());
@@ -114,7 +114,7 @@ public class AgentRemoteHandlerTest {
         when(remote.getCookie(identifier, info.getLocation())).thenReturn("new cookie");
         when(remote.ping(any(AgentRuntimeInfo.class))).thenReturn(new AgentInstruction(false));
 
-        handler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        handler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
 
         verify(remote).ping(withCookie(info, "new cookie"));
         assertEquals(1, agent.messages.size());
@@ -130,7 +130,7 @@ public class AgentRemoteHandlerTest {
         when(remote.getCookie(identifier, info.getLocation())).thenReturn("new cookie");
         when(remote.ping(any(AgentRuntimeInfo.class))).thenReturn(new AgentInstruction(true));
 
-        handler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        handler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
 
         verify(remote).ping(withCookie(info, "new cookie"));
         assertEquals(2, agent.messages.size());
@@ -203,7 +203,7 @@ public class AgentRemoteHandlerTest {
         when(remote.getCookie(instance.getAgentIdentifier(), info.getLocation())).thenReturn("new cookie");
         when(agentService.findAgent(instance.getUuid())).thenReturn(instance);
 
-        handler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        handler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
 
         handler.remove(agent);
         assertEquals(0, handler.connectedAgents().size());
@@ -216,7 +216,7 @@ public class AgentRemoteHandlerTest {
         when(agentService.findAgentAndRefreshStatus(instance.getUuid())).thenReturn(instance);
         when(remote.ping(any(AgentRuntimeInfo.class))).thenReturn(new AgentInstruction(false));
         when(remote.getCookie(instance.getAgentIdentifier(), info.getLocation())).thenReturn("new cookie");
-        handler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        handler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
 
         agent.messages.clear();
         handler.sendCancelMessage(instance.getAgentIdentifier().getUuid());
@@ -237,14 +237,14 @@ public class AgentRemoteHandlerTest {
         when(remote.getCookie(instance.getAgentIdentifier(), info.getLocation())).thenReturn("cookie");
         when(agentService.findAgent(instance.getUuid())).thenReturn(instance);
 
-        handler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        handler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
         info.setCookie(null);
 
         reset(remote);
         when(remote.ping(any(AgentRuntimeInfo.class))).thenReturn(new AgentInstruction(false));
         when(remote.getCookie(instance.getAgentIdentifier(), info.getLocation())).thenReturn("new cookie");
 
-        handler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        handler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
         verify(remote).ping(withCookie(info, "cookie"));
 
         info.setCookie(null);
@@ -254,7 +254,7 @@ public class AgentRemoteHandlerTest {
         when(remote.ping(any(AgentRuntimeInfo.class))).thenReturn(new AgentInstruction(false));
         when(remote.getCookie(instance.getAgentIdentifier(), info.getLocation())).thenReturn("new cookie");
 
-        handler.process(agent, new Message(Action.ping, MessageEncoding.encodeData(info)));
+        handler.process(agent, new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info)));
         verify(remote).ping(withCookie(info, "new cookie"));
     }
 
@@ -267,7 +267,7 @@ public class AgentRemoteHandlerTest {
         when(remote.ping(info)).thenReturn(new AgentInstruction(false));
         when(agentService.findAgent(instance.getUuid())).thenReturn(instance);
 
-        Message msg = new Message(Action.ping, MessageEncoding.encodeData(info));
+        Message msg = new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info));
         handler.process(agent, msg);
         assertEquals(1, agent.messages.size());
         assertEquals(Action.acknowledge, agent.messages.get(0).getAction());

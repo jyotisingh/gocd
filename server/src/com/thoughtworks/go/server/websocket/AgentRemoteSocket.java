@@ -20,9 +20,11 @@ import com.thoughtworks.go.websocket.MessageEncoding;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.*;
 import org.eclipse.jetty.websocket.api.extensions.Frame;
+import org.eclipse.jetty.websocket.common.frames.PingFrame;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
@@ -63,6 +65,14 @@ public class AgentRemoteSocket implements Agent {
     @OnWebSocketFrame
     public void onFrame(Frame frame) {
         LOGGER.debug("{} receive frame: {}", sessionName(), frame.getPayloadLength());
+        if(frame instanceof PingFrame){
+            try {
+                session.getRemote().sendPong(frame.getPayload());
+            } catch (IOException e) {
+                LOGGER.error(e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     @Override

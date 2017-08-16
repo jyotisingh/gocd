@@ -71,13 +71,15 @@ public class AgentRemoteHandler {
 
     public void processWithoutAcknowledgement(Agent agent, Message msg) throws Exception {
         switch (msg.getAction()) {
-            case ping:
+            case updateAgentRuntimeInfo:
+                System.out.println("Called updateAgentRuntimeInfo.." + msg.getAcknowledgementId());
                 AgentRuntimeInfo info = MessageEncoding.decodeData(msg.getData(), AgentRuntimeInfo.class);
                 if (!sessionIds.containsKey(agent)) {
                     LOGGER.info("{} is connected with websocket {}", info.getIdentifier(), agent);
                     sessionIds.put(agent, info.getUUId());
                     this.agentSessions.put(info.getUUId(), agent);
                 }
+
                 if (info.getCookie() == null) {
                     String cookie = agentCookie.get(agent);
                     if (cookie == null) {
@@ -91,22 +93,34 @@ public class AgentRemoteHandler {
                 if (instruction.isShouldCancelJob()) {
                     agent.send(new Message(Action.cancelBuild));
                 }
+                System.out.println("Done updateAgentRuntimeInfo.." + msg.getAcknowledgementId());
                 break;
             case reportCurrentStatus:
+                System.out.println("Called reportCurrentStatus.." + msg.getAcknowledgementId());
                 Report report = MessageEncoding.decodeData(msg.getData(), Report.class);
                 buildRepositoryRemote.reportCurrentStatus(report.getAgentRuntimeInfo(), findJobIdentifier(report), report.getJobState());
+                System.out.println("Done reportCurrentStatus.." + msg.getAcknowledgementId());
                 break;
             case reportCompleting:
+                System.out.println("Called reportCompleting.." + msg.getAcknowledgementId());
                 report = MessageEncoding.decodeData(msg.getData(), Report.class);
                 buildRepositoryRemote.reportCompleting(report.getAgentRuntimeInfo(), findJobIdentifier(report), report.getResult());
+                System.out.println("done reportCompleting.." + msg.getAcknowledgementId());
                 break;
             case reportCompleted:
+                System.out.println("Called reportCompleted.." + msg.getAcknowledgementId());
                 report = MessageEncoding.decodeData(msg.getData(), Report.class);
                 buildRepositoryRemote.reportCompleted(report.getAgentRuntimeInfo(), findJobIdentifier(report), report.getResult());
+                System.out.println("done reportCompleted.." + msg.getAcknowledgementId());
                 break;
             case consoleOut:
+                String agentUuid = sessionIds.get(agent);
                 ConsoleTransmission consoleTransmission = MessageEncoding.decodeData(msg.getData(), ConsoleTransmission.class);
-                File consoleLogFile = consoleService.consoleLogFile(findJobIdentifier(consoleTransmission));
+                JobInstance jobInstance = findJobInstance(consoleTransmission);
+                if (!jobInstance.getAgentUuid().equals(agentUuid)) {
+                    throw new RuntimeException("Two agents reporting console log for the same job. ganesh did this!");
+                }
+                File consoleLogFile = consoleService.consoleLogFile(jobInstance.getIdentifier());
                 consoleService.updateConsoleLog(consoleLogFile, consoleTransmission.getLineAsStream());
                 break;
             default:
@@ -121,6 +135,10 @@ public class AgentRemoteHandler {
 
         JobInstance instance = jobInstanceService.buildById(Long.valueOf(transmission.getBuildId()));
         return instance.getIdentifier();
+    }
+
+    private JobInstance findJobInstance(Transmission transmission) {
+        return jobInstanceService.buildById(Long.valueOf(transmission.getBuildId()));
     }
 
     public void remove(Agent agent) {
@@ -141,7 +159,7 @@ public class AgentRemoteHandler {
             return;
         }
         Agent agent = agentSessions.get(uuid);
-        if(agent != null) {
+        if (agent != null) {
             agent.send(new Message(Action.cancelBuild));
         }
     }

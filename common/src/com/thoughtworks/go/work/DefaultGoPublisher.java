@@ -99,7 +99,7 @@ public class DefaultGoPublisher implements GoPublisher {
     }
 
     public void reportCompleted(JobResult result) {
-        LOG.info("{} is reporting build result [{}] to Go Server for {}", agentIdentifier, result, jobIdentifier.toFullString());
+        LOG.info("{} is reporting status [{}] and build result [{}] to Go Server for {}", agentIdentifier, JobState.Completed, result, jobIdentifier.toFullString());
         remoteBuildRepository.reportCompleted(agentRuntimeInfo, jobIdentifier, result);
         reportCompletedAction();
     }

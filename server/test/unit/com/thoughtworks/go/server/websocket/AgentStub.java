@@ -19,6 +19,7 @@ package com.thoughtworks.go.server.websocket;
 import com.thoughtworks.go.websocket.Action;
 import com.thoughtworks.go.websocket.Message;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 

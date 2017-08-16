@@ -47,6 +47,7 @@ public class GoAgentServerWebSocketClientBuilder extends GoAgentServerClientBuil
 
         WebSocketClient client = new WebSocketClient(sslContextFactory);
         client.setMaxIdleTimeout(systemEnvironment.getWebsocketMaxIdleTime());
+        client.setConnectTimeout(systemEnvironment.getWebsocketConnectionTimeout());
         return client;
     }
 

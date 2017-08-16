@@ -181,14 +181,15 @@ public class SystemEnvironment implements Serializable, ConfigDirProvider {
     public static GoSystemProperty<Integer> GO_ELASTIC_PLUGIN_SERVER_PING_THREADS = new GoIntSystemProperty("go.elasticplugin.serverping.threads", 1);
     public static GoSystemProperty<Integer> GO_ENCRYPTION_API_MAX_REQUESTS = new GoIntSystemProperty("go.encryption.api.max.requests", 30);
 
-    public static GoSystemProperty<Boolean> WEBSOCKET_ENABLED = new GoBooleanSystemProperty("go.agent.websocket.enabled", false);
+    public static GoSystemProperty<Boolean> WEBSOCKET_ENABLED = new GoBooleanSystemProperty("go.agent.websocket.enabled", true);
     public static GoSystemProperty<Boolean> CONSOLE_LOGS_THROUGH_WEBSOCKET_ENABLED = new GoBooleanSystemProperty("go.agent.console.logs.websocket.enabled", false);
 
     public static GoSystemProperty<Boolean> AUTO_REGISTER_LOCAL_AGENT_ENABLED = new GoBooleanSystemProperty("go.auto.register.local.agent.enabled", true);
     public static GoSystemProperty<Long> GO_WEBSOCKET_ACK_MESSAGE_TIMEOUT = new GoLongSystemProperty("go.websocket.ack.message.timeout", 300 * 1000L);
-    public static GoSystemProperty<Integer> GO_WEBSOCKET_SEND_RETRY_COUNT = new GoIntSystemProperty("go.websocket.send.retry.count", 5);
+    public static GoSystemProperty<Integer> GO_WEBSOCKET_SEND_RETRY_COUNT = new GoIntSystemProperty("go.websocket.send.retry.count", 1);
 
     public static GoSystemProperty<Long> GO_WEBSOCKET_MAX_IDLE_TIME = new GoLongSystemProperty("go.websocket.max.idle.time", 60 * 1000L);
+    public static GoSystemProperty<Long> GO_WEBSOCKET_CONNECTION_TIMEOUT = new GoLongSystemProperty("go.websocket.connection.time", 30 * 1000L);
     public static GoSystemProperty<Boolean> GO_SERVER_SHALLOW_CLONE = new GoBooleanSystemProperty("go.server.shallowClone", false);
     public static GoSystemProperty<Boolean> GO_SERVER_SCHEDULED_PIPELINE_LOADER_GLOBAL_MATERIAL_LOOKUP = new GoBooleanSystemProperty("go.server.scheduledPipelineLoader.globalMaterialLookup", false);
     public static GoSystemProperty<Boolean> PLUGIN_UPLOAD_ENABLED = new GoBooleanSystemProperty("go.plugin.upload.enabled", false);
@@ -785,6 +786,9 @@ public class SystemEnvironment implements Serializable, ConfigDirProvider {
 
     public Long getWebsocketMaxIdleTime() {
         return GO_WEBSOCKET_MAX_IDLE_TIME.getValue();
+    }
+    public Long getWebsocketConnectionTimeout() {
+        return GO_WEBSOCKET_CONNECTION_TIMEOUT.getValue();
     }
 
     public Long getWebsocketAckMessageTimeout() {

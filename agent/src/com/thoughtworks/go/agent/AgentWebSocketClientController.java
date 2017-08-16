@@ -47,6 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -59,7 +60,6 @@ public class AgentWebSocketClientController extends AgentController {
     private final SslInfrastructureService sslInfrastructureService;
     private final GoArtifactsManipulator manipulator;
     private HttpService httpService;
-    private WebSocketClientHandler webSocketClientHandler;
     private WebSocketSessionHandler webSocketSessionHandler;
     private AtomicReference<BuildSession> buildSession = new AtomicReference<>();
     private JobRunner runner;
@@ -83,13 +83,17 @@ public class AgentWebSocketClientController extends AgentController {
         this.taskExtension = taskExtension;
         this.sslInfrastructureService = sslInfrastructureService;
         this.httpService = httpService;
-        this.webSocketClientHandler = webSocketClientHandler;
         this.webSocketSessionHandler = webSocketSessionHandler;
+        webSocketClientHandler.setWebsocket(this);
     }
 
     @Override
     public void ping() {
-        // Do nothing
+        try {
+            webSocketSessionHandler.ping();
+        } catch (IOException e) {
+            LOG.error(e.getMessage(), e);
+        }
     }
 
     @Override
@@ -100,10 +104,7 @@ public class AgentWebSocketClientController extends AgentController {
     @Override
     public void work() throws Exception {
         if (sslInfrastructureService.isRegistered()) {
-            if (webSocketSessionHandler.isNotRunning()) {
-                webSocketSessionHandler.clearCallBacks();
-                webSocketSessionHandler.setSession(webSocketClientHandler.connect(this));
-            }
+            webSocketSessionHandler.reconnectSessionIfNotRunning();
             updateServerAgentRuntimeInfo();
         }
     }
@@ -120,7 +121,6 @@ public class AgentWebSocketClientController extends AgentController {
                 LOG.info("Got cookie: {}", cookie);
                 break;
             case assignWork:
-                cancelJobIfThereIsOneRunning();
                 Work work = MessageEncoding.decodeWork(message.getData());
                 LOG.debug("Got work from server: [{}]", work.description());
                 runner = new JobRunner();
@@ -162,9 +162,9 @@ public class AgentWebSocketClientController extends AgentController {
             buildConsole = new ConsoleOutputWebsocketTransmitter(webSocketSessionHandler, buildSettings.getBuildId());
         } else {
             buildConsole = new ConsoleOutputTransmitter(
-                new RemoteConsoleAppender(
-                    urlService.prefixPartialUrl(buildSettings.getConsoleUrl()),
-                    httpService)
+                    new RemoteConsoleAppender(
+                            urlService.prefixPartialUrl(buildSettings.getConsoleUrl()),
+                            httpService)
             );
         }
 
@@ -231,7 +231,7 @@ public class AgentWebSocketClientController extends AgentController {
         AgentIdentifier agent = agentIdentifier();
         LOG.trace("{} is pinging server [{}]", agent, server);
         getAgentRuntimeInfo().refreshUsableSpace();
-        webSocketSessionHandler.sendAndWaitForAcknowledgement(new Message(Action.ping, MessageEncoding.encodeData(getAgentRuntimeInfo())));
+        webSocketSessionHandler.sendAndWaitForAcknowledgement(new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(getAgentRuntimeInfo())));
         LOG.trace("{} pinged server [{}]", agent, server);
     }
 
