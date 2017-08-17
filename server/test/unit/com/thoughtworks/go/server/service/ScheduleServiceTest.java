@@ -73,6 +73,7 @@ public class ScheduleServiceTest {
     private InstanceFactory instanceFactory = null;
     private SchedulingPerformanceLogger schedulingPerformanceLogger;
     private ElasticProfileService elasticProfileService;
+    private JobInstanceDao jobInstanceDao;
 
     @Before
     public void setup() {
@@ -92,9 +93,10 @@ public class ScheduleServiceTest {
         timeProvider = new TimeProvider();
         schedulingPerformanceLogger = mock(SchedulingPerformanceLogger.class);
         elasticProfileService = mock(ElasticProfileService.class);
+        jobInstanceDao = mock(JobInstanceDao.class);
         service = new ScheduleService(goConfigService, pipelineService, stageService, schedulingChecker, mock(
                 PipelineScheduledTopic.class), mock(PipelineDao.class), mock(StageDao.class), mock(StageOrderService.class), securityService, pipelineScheduleQueue,
-                jobInstanceService, mock(JobInstanceDao.class), mock(AgentAssignment.class), environmentConfigService, mock(PipelineLockService.class), serverHealthService,
+                jobInstanceService, jobInstanceDao, mock(AgentAssignment.class), environmentConfigService, mock(PipelineLockService.class), serverHealthService,
                 new TestTransactionTemplate(synchronizationManager),
                 mock(AgentService.class), synchronizationManager, timeProvider, consoleActivityMonitor, pipelinePauseService, instanceFactory, schedulingPerformanceLogger, elasticProfileService);
     }

@@ -54,6 +54,7 @@ public class AgentRemoteSocket implements Agent {
     @OnWebSocketClose
     public void onClose(int closeCode, String closeReason) {
         LOGGER.debug("{} closed. code: {}, reason: {}", sessionName(), closeCode, closeReason);
+        session = null;
         handler.remove(this);
     }
 

@@ -231,7 +231,7 @@ public class AgentWebSocketClientController extends AgentController {
         AgentIdentifier agent = agentIdentifier();
         LOG.trace("{} is pinging server [{}]", agent, server);
         getAgentRuntimeInfo().refreshUsableSpace();
-        webSocketSessionHandler.sendAndWaitForAcknowledgement(new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(getAgentRuntimeInfo())));
+        webSocketSessionHandler.fireAndForget(new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(getAgentRuntimeInfo())));
         LOG.trace("{} pinged server [{}]", agent, server);
     }
 

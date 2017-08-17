@@ -114,7 +114,7 @@ public class AgentWebSocketClientControllerTest {
     @Test
     public void shouldSendAgentRuntimeInfoWhenWorkIsCalled() throws Exception {
         when(sslInfrastructureService.isRegistered()).thenReturn(true);
-        when(webSocketSessionHandler.isNotRunning()).thenReturn(false);
+//        when(webSocketSessionHandler.isNotRunning()).thenReturn(false);
         ArgumentCaptor<Message> argumentCaptor = ArgumentCaptor.forClass(Message.class);
 
         agentController = createAgentController();
@@ -135,7 +135,7 @@ public class AgentWebSocketClientControllerTest {
         when(sslInfrastructureService.isRegistered()).thenReturn(true);
 
         agentController = createAgentController();
-        when(webSocketSessionHandler.isNotRunning()).thenReturn(true);
+//        when(webSocketSessionHandler.isNotRunning()).thenReturn(true);
         doThrow(new GeneralSecurityException()).when(webSocketClientHandler).connect();
 
         agentController.init();

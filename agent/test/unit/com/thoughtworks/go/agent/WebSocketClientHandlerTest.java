@@ -37,6 +37,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.*;
 
@@ -45,11 +46,14 @@ public class WebSocketClientHandlerTest {
     private GoAgentServerWebSocketClientBuilder builder;
     private URLService urlService;
     private Future session;
+    private WebSocketClientStub webSocketClient;
 
     @Before
     public void setUp() throws Exception {
         builder = mock(GoAgentServerWebSocketClientBuilder.class);
         when(builder.build()).thenReturn(new WebSocketClientStub());
+        webSocketClient = new WebSocketClientStub();
+        when(builder.build()).thenReturn(webSocketClient);
 
         urlService = mock(URLService.class);
         when(urlService.getAgentRemoteWebSocketUrl()).thenReturn("wss://localhost/websocket");
@@ -60,17 +64,17 @@ public class WebSocketClientHandlerTest {
 
     @Test
     public void shouldVerifyThatWebSocketClientIsStarted() throws Exception {
-        webSocketClientHandler.connect(createAgentController());
+        webSocketClientHandler.connect();
         verify(builder).build();
-        verify(session).get();
+        verify(session).get(webSocketClient.getConnectTimeout(), TimeUnit.MILLISECONDS);
     }
 
     @Test
     public void shouldVerifyThatWebSocketClientIsNotStartedIfAlreadyRunning() throws Exception {
-        webSocketClientHandler.connect(createAgentController());
-        webSocketClientHandler.connect(createAgentController());
+        webSocketClientHandler.connect();
+        webSocketClientHandler.connect();
         verify(builder, times(1)).build();
-        verify(session, times(2)).get();
+        verify(session, times(2)).get(webSocketClient.getConnectTimeout(), TimeUnit.MILLISECONDS);
     }
 
     private AgentWebSocketClientController createAgentController() {

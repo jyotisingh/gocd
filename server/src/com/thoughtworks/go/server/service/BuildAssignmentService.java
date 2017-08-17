@@ -214,16 +214,21 @@ public class BuildAssignmentService implements ConfigChangedListener {
         }
         Long start = System.currentTimeMillis();
         for (Map.Entry<String, Agent> entry : agents.entrySet()) {
-            String agentUUId = entry.getKey();
-            Agent agent = entry.getValue();
-            AgentInstance agentInstance = agentService.findAgentAndRefreshStatus(agentUUId);
+            assignWorkToAgent(entry.getKey(), entry.getValue());
+        }
+        LOGGER.debug("Matching {} agents with {} jobs took: {}ms", agents.size(), jobPlans.size(), System.currentTimeMillis() - start);
+    }
+
+    private void assignWorkToAgent(String agentUUId, Agent agent) {
+        AgentInstance agentInstance = agentService.findAgentAndRefreshStatus(agentUUId);
+        try {
             if (!agentInstance.isRegistered()) {
                 agent.send(new Message(Action.reregister));
-                continue;
+                return;
             }
             if (agentInstance.isDisabled() || !agentInstance.isIdle()) {
                 LOGGER.debug("Ignore agent [{}] that is {} and {}", agentInstance.getAgentIdentifier(), agentInstance.getRuntimeStatus(), agentInstance.getAgentConfigStatus());
-                continue;
+                return;
             }
             Work work = assignWorkToAgent(agentInstance);
             if (work != NO_WORK) {
@@ -234,8 +239,11 @@ public class BuildAssignmentService implements ConfigChangedListener {
                     agent.send(new Message(Action.assignWork, MessageEncoding.encodeWork(work)));
                 }
             }
+        } catch (Throwable e) {
+            agentInstance.idle();
+            //TODO: Should undo job assignment, ie. everything that happened in createWork - Jyoti/Ganesh
+            LOGGER.error(e.getMessage(), e);
         }
-        LOGGER.debug("Matching {} agents with {} jobs took: {}ms", agents.size(), jobPlans.size(), System.currentTimeMillis() - start);
     }
 
     private BuildSettings createBuildSettings(BuildAssignment assignment) {

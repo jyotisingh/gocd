@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 ThoughtWorks, Inc.
+ * Copyright 2017 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,36 +63,40 @@ public class WebSocketSessionHandler {
         return session != null && session.isOpen();
     }
 
-    private synchronized boolean isNotRunning() {
+    synchronized boolean isNotRunning() {
         return !isRunning();
     }
 
     public synchronized void reconnectSessionIfNotRunning() throws Exception {
         if (isNotRunning()) {
             if (session == null) {
-                LOG.info("Creating new session");
+                LOG.debug("Creating new session");
             } else {
-                LOG.info("Re-establishing websocket session");
+                LOG.debug("Re-establishing websocket session");
             }
             this.session = webSocketClientHandler.connect();
             this.sessionName = "[" + session.getRemoteAddress() + "]";
-            LOG.info("Done creating new session");
+            LOG.debug("Done creating new session");
         }
     }
 
     public void ping() throws IOException {
-        LOG.info("Sending ws ping");
+        LOG.debug("Sending ws ping");
         session.getRemote().sendPing(ByteBuffer.wrap("".getBytes()));
-        LOG.info("Done sending ws ping");
+        LOG.debug("Done sending ws ping");
     }
 
-    private void send(Message message) {
+    public void fireAndForget(Message message) {
+        send(message);
+    }
+
+    private synchronized void send(Message message) {
         for (int retries = 1; retries <= systemEnvironment.getWebsocketSendRetryCount(); retries++) {
             try {
-                LOG.info("{} attempt {} to send message: {}", sessionName(), retries, message);
+                LOG.debug("{} attempt {} to send message: {}", sessionName(), retries, message);
                 reconnectSessionIfNotRunning();
                 session.getRemote().sendBytes(ByteBuffer.wrap(MessageEncoding.encodeMessage(message)));
-                LOG.info("{} Done send message: {}", sessionName(), message);
+                LOG.debug("{} Done send message: {}", sessionName(), message);
                 break;
             } catch (Throwable e) {
                 try {
@@ -107,7 +111,7 @@ public class WebSocketSessionHandler {
         }
     }
 
-    void sendAndWaitForAcknowledgement(Message message) {
+    public void sendAndWaitForAcknowledgement(Message message) {
         final CountDownLatch wait = new CountDownLatch(1);
         sendWithCallback(message, new MessageCallback() {
             @Override
@@ -118,13 +122,13 @@ public class WebSocketSessionHandler {
         try {
             boolean success = wait.await(systemEnvironment.getWebsocketAckMessageTimeout(), TimeUnit.MILLISECONDS);
             if (!success) {
-                LOG.info("Removing callback for " + message.getAcknowledgementId());
+                LOG.debug("Removing callback for " + message.getAcknowledgementId());
                 callbacks.remove(message.getAcknowledgementId());
                 LOG.error(String.format("Did not receive a response from the server within %s mills. Message: %s. Action: %s. AckId: %s.", systemEnvironment.getWebsocketAckMessageTimeout(), message.getData(), message.getAction(), message.getAcknowledgementId()));
                 throw new RuntimeException(String.format("Did not receive a response from the server within %s mills. Message: %s. Action: %s. AckId: %s", systemEnvironment.getWebsocketAckMessageTimeout(), message.getData(), message.getAction(), message.getAcknowledgementId()));
             }
         } catch (InterruptedException e) {
-            LOG.info("Removing callback for " + message.getAcknowledgementId());
+            LOG.debug("Removing callback for " + message.getAcknowledgementId());
             callbacks.remove(message.getAcknowledgementId());
             LOG.error(String.format("Thread interrupted. Message: %s. Action: %s. AckId: %s. Exception: %s", message.getData(), message.getAction(), message.getAcknowledgementId(), e.getMessage()), e);
             bomb(e);
@@ -132,7 +136,7 @@ public class WebSocketSessionHandler {
     }
 
     private void sendWithCallback(Message message, MessageCallback callback) {
-        LOG.info("Registering callback for action: {}, ackid: {}, data: {}", message.getAction(), message.getAcknowledgementId(), message.getData());
+        LOG.debug("Registering callback for action: {}, ackid: {}, data: {}", message.getAction(), message.getAcknowledgementId(), message.getData());
         callbacks.put(message.getAcknowledgementId(), callback);
         send(message);
     }
@@ -145,14 +149,18 @@ public class WebSocketSessionHandler {
         return sessionName;
     }
 
-    void acknowledge(Message message) {
+    public void acknowledge(Message message) {
         String acknowledgementId = MessageEncoding.decodeData(message.getData(), String.class);
-        LOG.info("Acknowledging {}", acknowledgementId);
+        LOG.debug("Acknowledging {}", acknowledgementId);
         MessageCallback callback = callbacks.remove(acknowledgementId);
         if (callback == null) {
-            LOG.error("callback for {} was null. shouldn't have happened. ", acknowledgementId);
+            LOG.error("Callback for {} was null. This could happen if the server is responding very slowly or the agent was restarted.", acknowledgementId);
         } else {
             callback.call();
         }
+    }
+
+    void setSession(Session session) {
+        this.session = session;
     }
 }

@@ -72,28 +72,48 @@ import static org.junit.Assert.assertThat;
         "classpath:WEB-INF/applicationContext-acegi-security.xml"
 })
 public class ScheduleServiceIntegrationTest {
-    @Autowired private GoConfigService goConfigService;
-    @Autowired private GoConfigDao goConfigDao;
-    @Autowired private PipelineDao pipelineDao;
-    @Autowired private StageDao stageDao;
-    @Autowired private JobInstanceDao jobInstanceDao;
-    @Autowired private PipelineScheduler buildCauseProducer;
-    @Autowired private PipelineService pipelineService;
-    @Autowired private ScheduleService scheduleService;
-    @Autowired private PipelineScheduledTopic pipelineScheduledTopic;
-    @Autowired private PipelineScheduleQueue pipelineScheduleQueue;
-    @Autowired private StageService stageService;
-    @Autowired private JobInstanceService jobInstanceService;
-    @Autowired private ScheduleHelper scheduleHelper;
-    @Autowired private AgentAssignment agentAssignment;
-    @Autowired private PipelineLockService pipelineLockService;
-    @Autowired private MaterialRepository materialRepository;
-    @Autowired private GoCache goCache;
-    @Autowired private TransactionTemplate transactionTemplate;
-    @Autowired private PipelinePauseService pipelinePauseService;
+    @Autowired
+    private GoConfigService goConfigService;
+    @Autowired
+    private GoConfigDao goConfigDao;
+    @Autowired
+    private PipelineDao pipelineDao;
+    @Autowired
+    private StageDao stageDao;
+    @Autowired
+    private JobInstanceDao jobInstanceDao;
+    @Autowired
+    private PipelineScheduler buildCauseProducer;
+    @Autowired
+    private PipelineService pipelineService;
+    @Autowired
+    private ScheduleService scheduleService;
+    @Autowired
+    private PipelineScheduledTopic pipelineScheduledTopic;
+    @Autowired
+    private PipelineScheduleQueue pipelineScheduleQueue;
+    @Autowired
+    private StageService stageService;
+    @Autowired
+    private JobInstanceService jobInstanceService;
+    @Autowired
+    private ScheduleHelper scheduleHelper;
+    @Autowired
+    private AgentAssignment agentAssignment;
+    @Autowired
+    private PipelineLockService pipelineLockService;
+    @Autowired
+    private MaterialRepository materialRepository;
+    @Autowired
+    private GoCache goCache;
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+    @Autowired
+    private PipelinePauseService pipelinePauseService;
 
     private PipelineConfig mingleConfig;
-	@Autowired private DatabaseAccessHelper dbHelper;
+    @Autowired
+    private DatabaseAccessHelper dbHelper;
     private static final String STAGE_NAME = "dev";
     private GoConfigFileHelper configHelper;
     public Subversion repository;
@@ -419,6 +439,20 @@ public class ScheduleServiceIntegrationTest {
 
         scheduleService.updateJobStatus(jobIdentifier, JobState.Completed);
         assertThat(stageService.findLatestStage(pipelineName, secondStage), is(notNullValue()));
+    }
+
+    // This could happen during race condition between rescheduleHungJobs and rescheduleAbandonedBuildIfNecessary.
+    // The threads coud have run the queries and gotten the same jobid from the corresponding queries, but waiting to
+    // acquire a lock on one of the synchronized objects in rescheduleJob
+    @Test
+    public void shouldNotRescheduleAJobWhichHasAlreadyBeenRescheduled() {
+        PipelineConfig pipelineConfig = configHelper.addPipeline(PipelineConfigMother.createPipelineConfigWithStages(UUID.randomUUID().toString(), "s1"));
+        Pipeline pipeline = dbHelper.schedulePipeline(pipelineConfig, forceBuild(pipelineConfig), new TimeProvider());
+        scheduleService.rescheduleJob(pipeline.getFirstStage().getFirstJob());
+        int scheduledJobsCountOriginal = jobInstanceDao.orderedScheduledBuilds().size();
+        scheduleService.rescheduleJob(pipeline.getFirstStage().getFirstJob());
+        int scheduledJobsCountAfterSecondReschedule = jobInstanceDao.orderedScheduledBuilds().size();
+        assertThat(scheduledJobsCountOriginal, is(scheduledJobsCountAfterSecondReschedule));
     }
 
     private Pipeline runAndPass(PipelineConfig pipelineConfig, int counter) {

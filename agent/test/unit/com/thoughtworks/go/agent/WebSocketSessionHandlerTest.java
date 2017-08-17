@@ -26,6 +26,7 @@ import org.eclipse.jetty.websocket.common.WebSocketRemoteEndpoint;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.Future;
 
@@ -35,80 +36,89 @@ import static org.mockito.Mockito.*;
 
 public class WebSocketSessionHandlerTest {
 
-//    private WebSocketSessionHandler handler;
-//    private Session session;
-//
-//    @Before
-//    public void setUp() throws Exception {
-//        handler = new WebSocketSessionHandler(new SystemEnvironment());
-//        session = mock(Session.class);
-//        handler.setSession(session);
-//    }
-//
-//    @Test
-//    public void shouldWaitForAcknowledgementWhileSendingMessages() throws Exception {
-//        final Message message = new Message(Action.reportCurrentStatus);
-//
-//        when(session.getRemote()).thenReturn(new FakeWebSocketEndpoint(new Runnable() {
-//            @Override
-//            public void run() {
-//                handler.acknowledge(new Message(Action.acknowledge, message.getAcknowledgementId()));
-//            }
-//        }));
-//
-//        Thread sendThread = new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                handler.sendAndWaitForAcknowledgement(message);
-//            }
-//        });
-//        sendThread.start();
-//        assertThat(sendThread.isAlive(), is(true));
-//
-//        sendThread.join();
-//        assertThat(sendThread.isAlive(), is(false));
-//    }
-//
-//    @Test
-//    public void shouldReturnTrueIfNotRunning() throws Exception {
-//        assertThat(handler.isNotRunning(), is(true));
-//    }
-//
-//    @Test
-//    public void shouldReturnFalseIfRunning() throws Exception {
-//        when(session.isOpen()).thenReturn(true);
-//        assertThat(handler.isNotRunning(), is(false));
-//    }
-//
-//    @Test
-//    public void shouldSetSessionNameToNoSessionWhenStopped() throws Exception {
-//        when(session.isOpen()).thenReturn(true);
-//        when(session.getRemoteAddress()).thenReturn(null);
-//        handler.stop();
-//        assertThat(handler.getSessionName(), is("[No Session]"));
-//    }
-//
-//    @Test
-//    public void shouldSetSessionToNullWhenStopped() throws Exception {
-//        when(session.isOpen()).thenReturn(true);
-//        when(session.getRemoteAddress()).thenReturn(null);
-//        handler.stop();
-//        verify(session).close();
-//        assertThat(handler.isNotRunning(), is(true));
-//    }
-//
-//    class FakeWebSocketEndpoint extends WebSocketRemoteEndpoint {
-//        private Runnable runnable;
-//
-//        public FakeWebSocketEndpoint(Runnable runnable) {
-//            super(mock(LogicalConnection.class), mock(OutgoingFrames.class));
-//            this.runnable = runnable;
-//        }
-//
-//        @Override
-//        public Future<Void> sendBytesByFuture(ByteBuffer data) {
-//            runnable.run();
-//            return null;
-//        }
-//    }
+    private WebSocketSessionHandler handler;
+    private Session session;
+
+    @Before
+    public void setUp() throws Exception {
+        WebSocketClientHandler webSocketClientHandler = mock(WebSocketClientHandler.class);
+        handler = new WebSocketSessionHandler(webSocketClientHandler, new SystemEnvironment());
+        session = mock(Session.class);
+        when(session.getRemoteAddress()).thenReturn(new InetSocketAddress(1234));
+        handler.setSession(session);
+    }
+
+    @Test
+    public void shouldWaitForAcknowledgementWhileSendingMessages() throws Exception {
+        when(session.isOpen()).thenReturn(true);
+        final Message message = new Message(Action.reportCurrentStatus);
+
+        when(session.getRemote()).thenReturn(new FakeWebSocketEndpoint(new Runnable() {
+            @Override
+            public void run() {
+                handler.acknowledge(new Message(Action.acknowledge, message.getAcknowledgementId()));
+            }
+        }));
+
+        Thread sendThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                handler.sendAndWaitForAcknowledgement(message);
+            }
+        });
+        sendThread.start();
+        assertThat(sendThread.isAlive(), is(true));
+
+        sendThread.join();
+        assertThat(sendThread.isAlive(), is(false));
+    }
+
+    @Test
+    public void shouldReturnTrueIfNotRunning() throws Exception {
+        assertThat(handler.isNotRunning(), is(true));
+    }
+
+    @Test
+    public void shouldReturnFalseIfRunning() throws Exception {
+        when(session.isOpen()).thenReturn(true);
+        assertThat(handler.isNotRunning(), is(false));
+    }
+
+    @Test
+    public void shouldSetSessionNameToNoSessionWhenStopped() throws Exception {
+        when(session.isOpen()).thenReturn(true);
+        when(session.getRemoteAddress()).thenReturn(null);
+        handler.stop();
+        assertThat(handler.getSessionName(), is("[No Session]"));
+    }
+
+    @Test
+    public void shouldSetSessionToNullWhenStopped() throws Exception {
+        when(session.isOpen()).thenReturn(true);
+        when(session.getRemoteAddress()).thenReturn(null);
+        handler.stop();
+        verify(session).close();
+        assertThat(handler.isNotRunning(), is(true));
+    }
+
+    class FakeWebSocketEndpoint extends WebSocketRemoteEndpoint {
+        private Runnable runnable;
+
+        public FakeWebSocketEndpoint(Runnable runnable) {
+            super(mock(LogicalConnection.class), mock(OutgoingFrames.class));
+            this.runnable = runnable;
+        }
+
+        @Override
+        public Future<Void> sendBytesByFuture(ByteBuffer data) {
+            runnable.run();
+            return null;
+        }
+
+        @Override
+        public void sendBytes(ByteBuffer data) {
+            runnable.run();
+        }
+
+    }
 }

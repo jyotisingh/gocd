@@ -149,7 +149,7 @@ public class JobInstanceService implements JobPlanLoader, ConfigChangedListener 
                     try {
                         jobStatusListener.jobStatusChanged(job);
                     } catch (Exception e) {
-                        LOGGER.error("error notifying listener for job {}", job, e);
+                        LOGGER.error("error notifying listener {} for job {}", jobStatusListener.getClass(), job, e);
                     }
             }
         });
