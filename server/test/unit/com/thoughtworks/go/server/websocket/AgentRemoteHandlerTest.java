@@ -260,6 +260,20 @@ public class AgentRemoteHandlerTest {
 
     @Test
     public void shouldSendBackAnAcknowledgementMessageIfMessageHasAcknowledgementId() throws Exception {
+        agent.setIgnoreAcknowledgements(false);
+        AgentRuntimeInfo info = new AgentRuntimeInfo(new AgentIdentifier("HostName", "ipAddress", "uuid"), AgentRuntimeStatus.Idle, null, null, false, timeProvider);
+        JobIdentifier jobIdentifier = new JobIdentifier();
+
+        Message msg = new Message(Action.reportCompleted, MessageEncoding.encodeData(new Report(info, jobIdentifier, JobResult.Passed)));
+        handler.process(agent, msg);
+
+        assertEquals(1, agent.messages.size());
+        assertEquals(Action.acknowledge, agent.messages.get(0).getAction());
+        assertEquals(msg.getAcknowledgementId(), MessageEncoding.decodeData(agent.messages.get(0).getData(), String.class));
+    }
+
+    @Test
+    public void shouldNotSendBackAnAcknowledgementMessageForUpdateAgentRuntimeInfo() throws Exception {
         AgentInstance instance = AgentInstanceMother.idle();
         AgentRuntimeInfo info = new AgentRuntimeInfo(instance.getAgentIdentifier(), AgentRuntimeStatus.Idle, null, null, false, timeProvider);
         info.setCookie("cookie");
@@ -268,9 +282,8 @@ public class AgentRemoteHandlerTest {
         when(agentService.findAgent(instance.getUuid())).thenReturn(instance);
 
         Message msg = new Message(Action.updateAgentRuntimeInfo, MessageEncoding.encodeData(info));
+
         handler.process(agent, msg);
-        assertEquals(1, agent.messages.size());
-        assertEquals(Action.acknowledge, agent.messages.get(0).getAction());
-        assertEquals(msg.getAcknowledgementId(), MessageEncoding.decodeData(agent.messages.get(0).getData(), String.class));
+        assertEquals(0, agent.messages.size());
     }
 }
