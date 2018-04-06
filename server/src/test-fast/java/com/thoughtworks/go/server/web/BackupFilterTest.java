@@ -168,8 +168,8 @@ public class BackupFilterTest {
     private Request request(HttpMethod method, String contentType, String uri) {
         Request request = new Request(mock(HttpChannel.class), mock(HttpInput.class));
         request.setContentType(contentType);
-        request.setMethod(method, method.asString());
-        request.setUri(new HttpURI(uri));
+        request.setMethod(method.asString());
+        request.setHttpURI(new HttpURI(uri));
         return request;
     }
 }

@@ -35,7 +35,7 @@ public class Jetty9RequestTest {
     public void setUp() throws Exception {
         request = mock(Request.class);
         jetty9Request = new Jetty9Request(request);
-        when(request.getUri()).thenReturn(new HttpURI("foo/bar/baz"));
+        when(request.getHttpURI()).thenReturn(new HttpURI("foo/bar/baz"));
         when(request.getRootURL()).thenReturn(new StringBuilder("http://junk/"));
     }
 
@@ -57,6 +57,6 @@ public class Jetty9RequestTest {
     @Test
     public void shouldSetRequestUri() {
         jetty9Request.setRequestURI("foo");
-        verify(request).setRequestURI("foo");
+        verify(request).setHttpURI(new HttpURI("foo"));
     }
 }

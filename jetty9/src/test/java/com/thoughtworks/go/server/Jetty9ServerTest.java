@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 ThoughtWorks, Inc.
+ * Copyright 2018 ThoughtWorks, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import org.apache.commons.io.FileUtils;
 import org.eclipse.jetty.jmx.MBeanContainer;
 import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.server.handler.HandlerCollection;
-import org.eclipse.jetty.servlets.gzip.GzipHandler;
+import org.eclipse.jetty.server.handler.gzip.GzipHandler;
 import org.eclipse.jetty.webapp.JettyWebXmlConfiguration;
 import org.eclipse.jetty.webapp.WebAppContext;
 import org.eclipse.jetty.webapp.WebInfConfiguration;
@@ -292,7 +292,7 @@ public class Jetty9ServerTest {
         jetty9Server.setSessionConfig();
 
         WebAppContext webAppContext = getWebAppContext(jetty9Server);
-        assertThat(webAppContext.getSessionHandler().getSessionManager().getMaxInactiveInterval(), is(1234));
+        assertThat(webAppContext.getSessionHandler().getMaxInactiveInterval(), is(1234));
     }
 
     @Test
@@ -302,7 +302,7 @@ public class Jetty9ServerTest {
         jetty9Server.setSessionConfig();
 
         WebAppContext webAppContext = getWebAppContext(jetty9Server);
-        SessionCookieConfig sessionCookieConfig = webAppContext.getSessionHandler().getSessionManager().getSessionCookieConfig();
+        SessionCookieConfig sessionCookieConfig = webAppContext.getSessionHandler().getSessionCookieConfig();
         assertThat(sessionCookieConfig.isHttpOnly(), is(true));
         assertThat(sessionCookieConfig.isSecure(), is(true));
         assertThat(sessionCookieConfig.getMaxAge(), is(5678));
