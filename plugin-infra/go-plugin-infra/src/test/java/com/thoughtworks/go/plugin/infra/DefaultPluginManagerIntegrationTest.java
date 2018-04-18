@@ -24,10 +24,7 @@ import com.thoughtworks.go.plugin.infra.monitor.PluginFileDetails;
 import com.thoughtworks.go.plugin.infra.plugininfo.GoPluginDescriptor;
 import com.thoughtworks.go.util.SystemEnvironment;
 import org.apache.commons.io.FileUtils;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.ContextConfiguration;
@@ -36,8 +33,7 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import java.io.File;
 import java.io.IOException;
 
-import static com.thoughtworks.go.util.SystemEnvironment.PLUGIN_ACTIVATOR_JAR_PATH;
-import static com.thoughtworks.go.util.SystemEnvironment.PLUGIN_BUNDLE_PATH;
+import static com.thoughtworks.go.util.SystemEnvironment.*;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
@@ -46,9 +42,11 @@ import static org.hamcrest.MatcherAssert.assertThat;
 public class DefaultPluginManagerIntegrationTest extends SystemPropertyAffectingTestBase {
     public static final String PLUGIN_DESC_PROPERTY_SET_BY_TEST_PLUGIN_1 = "testplugin.descriptorValidator.setPluginDescriptor.invoked";
     private static final String PLUGIN_DIR_NAME = "./tmp-DefPlgnMgrIntTest";
-    private static final String BUNDLE_DIR_NAME = "./tmp-bundles-DefPlgnMgrIntTest";
+    private static final String PLUGINS_WORK_DIR_PATH = "./tmp-bundles-DefPlgnMgrIntTest";
+    private static final File PLUGINS_BUNDLED_FOLDER = new File("./tmp-bundled-DefPlgnMgrIntTest");
+    private static final File PLUGINS_EXTERNAL_FOLDER = new File("./tmp-external-DefPlgnMgrIntTest");
     private static final File PLUGIN_DIR = new File(PLUGIN_DIR_NAME);
-    private static final File BUNDLE_DIR = new File(BUNDLE_DIR_NAME);
+    private static final File BUNDLE_DIR = new File(PLUGINS_WORK_DIR_PATH);
     private static final String PLUGIN_ID_1 = "testplugin.descriptorValidator";
     @Autowired DefaultPluginManager pluginManager;
     @Autowired DefaultPluginJarChangeListener jarChangeListener;
@@ -57,7 +55,9 @@ public class DefaultPluginManagerIntegrationTest extends SystemPropertyAffecting
     @BeforeClass
     public static void overrideProperties() {
         overrideProperty(PLUGIN_ACTIVATOR_JAR_PATH.propertyName(), "defaultFiles/go-plugin-activator.jar");
-        overrideProperty(PLUGIN_BUNDLE_PATH.propertyName(), BUNDLE_DIR_NAME);
+        overrideProperty(PLUGIN_BUNDLE_PATH.propertyName(), PLUGINS_WORK_DIR_PATH);
+        overrideProperty(PLUGIN_GO_PROVIDED_PATH.propertyName(), PLUGINS_BUNDLED_FOLDER.getPath());
+        overrideProperty(PLUGIN_EXTERNAL_PROVIDED_PATH.propertyName(), PLUGINS_BUNDLED_FOLDER.getPath());
     }
 
     private static File pathOfFileInDefaultFiles(String filePath) {
@@ -83,8 +83,10 @@ public class DefaultPluginManagerIntegrationTest extends SystemPropertyAffecting
     public void setUpPluginInfrastructure() throws IOException {
         PLUGIN_DIR.mkdirs();
         BUNDLE_DIR.mkdirs();
+        PLUGINS_BUNDLED_FOLDER.mkdirs();
+        PLUGINS_BUNDLED_FOLDER.mkdirs();
         try {
-            pluginManager.startInfrastructure(true);
+            pluginManager.startInfrastructure(false);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -99,6 +101,8 @@ public class DefaultPluginManagerIntegrationTest extends SystemPropertyAffecting
         pluginManager.stopInfrastructure();
         FileUtils.deleteQuietly(PLUGIN_DIR);
         FileUtils.deleteQuietly(BUNDLE_DIR);
+        FileUtils.deleteQuietly(PLUGINS_EXTERNAL_FOLDER);
+        FileUtils.deleteQuietly(PLUGINS_BUNDLED_FOLDER);
     }
 
     //TODO: Write Test to handle OSGIFWK and PLugin Manager Interaction.
