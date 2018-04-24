@@ -257,10 +257,10 @@ public class JobInstanceSqlMapDao extends SqlMapClientDaoSupport implements JobI
 
     private String cacheKeyForOriginalJobIdentifier(StageIdentifier stageIdentifier, String jobName) {
         return (getClass().getName() + "_originalJobIdentifier_" + StringUtil.escapeAndJoinStrings(
-                stageIdentifier.getPipelineName(),
-                stageIdentifier.getPipelineLabel(),
+                stageIdentifier.getPipelineName().toLowerCase(),
+                stageIdentifier.getPipelineLabel().toLowerCase(),
                 String.valueOf(stageIdentifier.getPipelineCounter()),
-                stageIdentifier.getStageName(),
+                stageIdentifier.getStageName().toLowerCase(),
                 stageIdentifier.getStageCounter()) + "_job_" + jobName.toLowerCase()).intern();
     }
 

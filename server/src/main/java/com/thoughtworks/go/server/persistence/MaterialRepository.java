@@ -939,8 +939,8 @@ public class MaterialRepository extends HibernateDaoSupport {
         });
     }
 
-    private String cacheKeyForHasPipelineEverRunWithModification(Object pipelineName, long materialId, long modificationId) {
-        return String.format("%s_hasPipelineEverRunWithModification_%s_%s_%s", getClass().getName(), pipelineName, materialId, modificationId).intern();
+    private String cacheKeyForHasPipelineEverRunWithModification(String pipelineName, long materialId, long modificationId) {
+        return String.format("%s_hasPipelineEverRunWithModification_%s_%s_%s", getClass().getName(), pipelineName.toLowerCase(), materialId, modificationId).intern();
     }
 
     @SuppressWarnings("unchecked")
@@ -1078,7 +1078,7 @@ public class MaterialRepository extends HibernateDaoSupport {
 
     String cacheKeyForNthLatestModification(int n, DependencyMaterial dependencyMaterial, PipelineIdentifier pipelineIdentifier) {
         return String.format("%s_nthLatestModificationFor_%s_forMaterial_%s_withIdentifier_%s", getClass().getName(), n, dependencyMaterial.getFingerprint(),
-                pipelineIdentifier.pipelineLocator()).intern();
+                pipelineIdentifier.pipelineLocator().toLowerCase()).intern();
     }
 
     String cacheKeyForModificationWithRevision(long materialId, String revision) {
@@ -1086,7 +1086,7 @@ public class MaterialRepository extends HibernateDaoSupport {
     }
 
     String cacheKeyForModificationsForStageLocator(StageIdentifier stageIdentifier) {
-        return String.format("%s_modificationsFor_%s", getClass().getName(), stageIdentifier.getStageLocator()).intern();
+        return String.format("%s_modificationsFor_%s", getClass().getName(), stageIdentifier.getStageLocator().toLowerCase()).intern();
     }
 
     public File folderFor(Material material) {

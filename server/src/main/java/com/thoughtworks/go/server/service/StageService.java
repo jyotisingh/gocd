@@ -335,7 +335,7 @@ public class StageService implements StageRunFinder, StageFinder {
     }
 
     private String cacheKeyForLatestStageFeedForPipeline(String pipelineName) {
-        return String.format("%s_latestStageFeedForPipeline_%s", getClass().getName(), pipelineName).intern();
+        return String.format("%s_latestStageFeedForPipeline_%s", getClass().getName(), pipelineName.toLowerCase()).intern();
     }
 
     private void clearCachedCompletedStageFeeds(String pipelineName) {

@@ -96,4 +96,10 @@ public class CachedCurrentActivityServiceIntegrationTest {
         assertThat(cachedCurrentActivityService.isStageActive(pipeline.getName(), "ft"), is(true));
     }
 
+    @Test
+    public void testShouldReturnTrueIfAStageIsActive_CaseInsensitive() {
+        Pipeline pipeline = fixture.createPipelineWithFirstStagePassedAndSecondStageRunning();
+        assertThat(cachedCurrentActivityService.isStageActive(pipeline.getName().toUpperCase(), "FT"), is(true));
+    }
+
 }
