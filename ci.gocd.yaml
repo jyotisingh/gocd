@@ -1,5 +1,5 @@
 pipelines:
-  yamlpipe1:
+  yamlpipe1888:
     group: simple
     materials:
       mygit:  # this is the name of material something
