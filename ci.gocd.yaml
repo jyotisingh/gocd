@@ -1,0 +1,14 @@
+pipelines:
+  yamlpipe1:
+    group: simple
+    materials:
+      mygit:  # this is the name of material something
+        # says about type of material and url at once
+        git: https://github.com/jyotisingh/junk 
+    stages:
+      - build: # name of stage
+          jobs:
+            build: # name of the job
+              tasks:
+               - exec: # indicates type of task
+                   command: make
